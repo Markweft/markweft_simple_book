@@ -21,6 +21,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     extensions: <String>['md', 'markdown'],
   );
 
+  @override
   Future<MarkweftProject?> createProject({
     required String title,
   }) async {
@@ -45,6 +46,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     return project;
   }
 
+  @override
   Future<MarkweftProject?> importMarkdown({
     required String title,
   }) async {
@@ -78,6 +80,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     return project;
   }
 
+  @override
   Future<MarkweftProject?> pickAndOpenProject() async {
     final selected = await openFile(
       acceptedTypeGroups: const <XTypeGroup>[_projectType],
@@ -89,71 +92,96 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     return openProject(selected.path);
   }
 
+  @override
   Future<MarkweftProject> openProject(String projectPath) async {
     final projectFile = File(projectPath);
     if (!await projectFile.exists()) {
-      throw FileSystemException('Project file does not exist.', projectPath);
+      throw FileSystemException(
+        'Project file does not exist.',
+        projectPath,
+      );
     }
 
     final workspace = await _createWorkspace();
-    final archiveBytes = await projectFile.readAsBytes();
-    final archive = ZipDecoder().decodeBytes(archiveBytes, verify: true);
 
-    for (final entry in archive) {
-      final destinationPath = _safeDestinationPath(
-        workspace.path,
-        entry.name,
+    try {
+      final archiveBytes = await projectFile.readAsBytes();
+      final archive = ZipDecoder().decodeBytes(
+        archiveBytes,
+        verify: true,
       );
 
-      if (entry.isFile) {
-        final output = File(destinationPath);
-        await output.parent.create(recursive: true);
-        await output.writeAsBytes(
-          _entryBytes(entry),
-          flush: true,
+      for (final entry in archive) {
+        final destinationPath = _safeDestinationPath(
+          workspace.path,
+          entry.name,
         );
-      } else {
-        await Directory(destinationPath).create(recursive: true);
+
+        if (entry.isFile) {
+          final output = File(destinationPath);
+          await output.parent.create(recursive: true);
+          await output.writeAsBytes(
+            _entryBytes(entry),
+            flush: true,
+          );
+        } else {
+          await Directory(destinationPath).create(recursive: true);
+        }
       }
-    }
 
-    final manifest = File(path.join(workspace.path, 'manifest.yaml'));
-    final title = await _readTitle(manifest) ?? path.basenameWithoutExtension(
-      projectFile.path,
-    );
-
-    final project = MarkweftProject(
-      file: projectFile,
-      workspace: workspace,
-      title: title,
-    );
-
-    if (!await project.markdownFile.exists()) {
-      throw const FormatException(
-        'Invalid .mdw project: content/book.md is missing.',
+      final manifest = File(
+        path.join(workspace.path, 'manifest.yaml'),
       );
-    }
+      final title =
+          await _readTitle(manifest) ??
+          path.basenameWithoutExtension(projectFile.path);
 
-    await project.imagesDirectory.create(recursive: true);
-    await project.filesDirectory.create(recursive: true);
-    return project;
+      final project = MarkweftProject(
+        file: projectFile,
+        workspace: workspace,
+        title: title,
+      );
+
+      if (!await project.markdownFile.exists()) {
+        throw const FormatException(
+          'Invalid .mdw project: content/book.md is missing.',
+        );
+      }
+
+      await project.imagesDirectory.create(recursive: true);
+      await project.filesDirectory.create(recursive: true);
+
+      return project;
+    } on Object {
+      if (await workspace.exists()) {
+        await workspace.delete(recursive: true);
+      }
+      rethrow;
+    }
   }
 
+  @override
   Future<String> loadMarkdown(MarkweftProject project) {
     return project.markdownFile.readAsString();
   }
 
+  @override
   Future<void> saveMarkdown(
     MarkweftProject project,
     String markdown,
   ) async {
     await project.markdownFile.parent.create(recursive: true);
-    await project.markdownFile.writeAsString(markdown, flush: true);
+    await project.markdownFile.writeAsString(
+      markdown,
+      flush: true,
+    );
     await saveProject(project);
   }
 
+  @override
   Future<void> saveProject(MarkweftProject project) async {
     final archive = Archive();
+
     await _appendDirectoryToArchive(
       archive: archive,
       directory: project.workspace,
@@ -163,15 +191,21 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     final encoded = ZipEncoder().encode(archive);
 
     await project.file.parent.create(recursive: true);
+
     final temporaryFile = File('${project.file.path}.tmp');
-    await temporaryFile.writeAsBytes(encoded, flush: true);
+    await temporaryFile.writeAsBytes(
+      encoded,
+      flush: true,
+    );
 
     if (await project.file.exists()) {
       await project.file.delete();
     }
+
     await temporaryFile.rename(project.file.path);
   }
 
+  @override
   Future<void> closeProject(MarkweftProject project) async {
     if (await project.workspace.exists()) {
       await project.workspace.delete(recursive: true);
@@ -185,11 +219,24 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     await project.markdownFile.parent.create(recursive: true);
     await project.imagesDirectory.create(recursive: true);
     await project.filesDirectory.create(recursive: true);
-    await File(path.join(project.imagesDirectory.path, '.keep')).writeAsString('');
-    await File(path.join(project.filesDirectory.path, '.keep')).writeAsString('');
-    await project.markdownFile.writeAsString(markdown, flush: true);
 
-    final manifest = File(path.join(project.workspace.path, 'manifest.yaml'));
+    await File(
+      path.join(project.imagesDirectory.path, '.keep'),
+    ).writeAsString('');
+
+    await File(
+      path.join(project.filesDirectory.path, '.keep'),
+    ).writeAsString('');
+
+    await project.markdownFile.writeAsString(
+      markdown,
+      flush: true,
+    );
+
+    final manifest = File(
+      path.join(project.workspace.path, 'manifest.yaml'),
+    );
+
     await manifest.writeAsString(
       'format: markweft\n'
       'version: 1\n'
@@ -202,8 +249,22 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   }
 
   Future<Directory> _createWorkspace() async {
-    final temporaryDirectory = await getTemporaryDirectory();
-    return temporaryDirectory.createTemp('markweft_');
+    final systemTemporaryDirectory = await getTemporaryDirectory();
+
+    // On sandboxed macOS builds path_provider can return a valid cache path
+    // whose directory has not been created yet.
+    await systemTemporaryDirectory.create(recursive: true);
+
+    final workspacesDirectory = Directory(
+      path.join(
+        systemTemporaryDirectory.path,
+        'markweft_workspaces',
+      ),
+    );
+
+    await workspacesDirectory.create(recursive: true);
+
+    return workspacesDirectory.createTemp('book_');
   }
 
   Future<void> _appendDirectoryToArchive({
@@ -219,31 +280,54 @@ final class MdwBookProjectRepository implements BookProjectRepository {
         continue;
       }
 
-      final relativePath = path.relative(entity.path, from: rootPath);
-      final archivePath = relativePath.replaceAll(path.separator, '/');
+      final relativePath = path.relative(
+        entity.path,
+        from: rootPath,
+      );
+      final archivePath = relativePath.replaceAll(
+        path.separator,
+        '/',
+      );
       final bytes = await entity.readAsBytes();
+
       archive.addFile(
-        ArchiveFile(archivePath, bytes.length, bytes),
+        ArchiveFile(
+          archivePath,
+          bytes.length,
+          bytes,
+        ),
       );
     }
   }
 
   Uint8List _entryBytes(ArchiveFile entry) {
     final bytes = entry.readBytes();
+
     if (bytes == null) {
-      throw FormatException('Unable to read ZIP entry: ${entry.name}');
+      throw FormatException(
+        'Unable to read ZIP entry: ${entry.name}',
+      );
     }
+
     return bytes;
   }
 
-  String _safeDestinationPath(String workspacePath, String archivePath) {
+  String _safeDestinationPath(
+    String workspacePath,
+    String archivePath,
+  ) {
     final normalized = path.normalize(
-      path.join(workspacePath, archivePath.replaceAll('/', path.separator)),
+      path.join(
+        workspacePath,
+        archivePath.replaceAll('/', path.separator),
+      ),
     );
     final root = path.normalize(workspacePath);
 
     if (normalized != root && !path.isWithin(root, normalized)) {
-      throw FormatException('Unsafe file path inside .mdw: $archivePath');
+      throw FormatException(
+        'Unsafe file path inside .mdw: $archivePath',
+      );
     }
 
     return normalized;
@@ -255,9 +339,13 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     }
 
     try {
-      final document = loadYaml(await manifest.readAsString());
+      final document = loadYaml(
+        await manifest.readAsString(),
+      );
+
       if (document is YamlMap) {
         final value = document['title']?.toString().trim();
+
         return value == null || value.isEmpty ? null : value;
       }
     } on Object {
@@ -268,7 +356,9 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   }
 
   String _ensureMdwExtension(String value) {
-    return value.toLowerCase().endsWith('.mdw') ? value : '$value.mdw';
+    return value.toLowerCase().endsWith('.mdw')
+        ? value
+        : '$value.mdw';
   }
 
   String _safeFileName(String value) {
@@ -277,6 +367,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
         .replaceAll(RegExp(r'^_+|_+$'), '');
+
     return normalized.isEmpty ? 'untitled_book' : normalized;
   }
 }

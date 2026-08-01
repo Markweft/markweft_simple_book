@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:markweft_simple_book/core/ui/dialogs/book_title_dialog.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/pages/book_editor_page.dart';
 import 'package:markweft_simple_book/features/book_library/data/repositories/mdw_book_project_repository.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/recent_projects_store.dart';
@@ -18,7 +19,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   final BookProjectRepository _projectRepository =
       MdwBookProjectRepository();
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
-
+  final GlobalKey<NavigatorState> _navigatorKey =
+      GlobalKey<NavigatorState>();
   MarkweftProject? _activeProject;
   List<String> _recentProjects = const <String>[];
   bool _isBusy = false;
@@ -150,54 +152,27 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     required String title,
     required String actionLabel,
   }) async {
-    final controller = TextEditingController();
+    final dialogContext = _navigatorKey.currentContext;
 
-    final result = await showDialog<String>(
-      context: context,
+    if (dialogContext == null) {
+      return null;
+    }
+
+    return showDialog<String>(
+      context: dialogContext,
       builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Book title',
-              hintText: 'My new book',
-              border: OutlineInputBorder(),
-            ),
-            onSubmitted: (value) {
-              final normalized = value.trim();
-              if (normalized.isNotEmpty) {
-                Navigator.of(context).pop(normalized);
-              }
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final normalized = controller.text.trim();
-                if (normalized.isNotEmpty) {
-                  Navigator.of(context).pop(normalized);
-                }
-              },
-              child: Text(actionLabel),
-            ),
-          ],
+        return BookTitleDialog(
+          title: title,
+          actionLabel: actionLabel,
         );
       },
     );
-
-    controller.dispose();
-    return result;
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Markweft',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -207,9 +182,10 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         scaffoldBackgroundColor: const Color(0xFFF4F0EA),
         useMaterial3: true,
       ),
-      localizationsDelegates: [
-        ...GlobalMaterialLocalizations.delegates,
-
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ar'),
       ],
       home: _activeProject == null
           ? WelcomePage(
