@@ -29,7 +29,7 @@ final class BookTablePaginator {
     final chunks = <List<String>>[];
 
     for (var index = 0; index < rows.length; index += table.rowsPerPage) {
-      final end = (index + table.rowsPerPage).clamp(0, rows.length);
+      final end = (index + table.rowsPerPage).clamp(0, rows.length).toInt();
       chunks.add(rows.sublist(index, end));
     }
 
@@ -102,7 +102,9 @@ final class BookTablePaginator {
         settings.orientation == BookPageOrientation.landscape ? -5 : 0;
     final paddingAdjustment = ((settings.padding - 48) / 8).round();
 
-    return (base + orientationAdjustment - paddingAdjustment).clamp(5, 40);
+    return (base + orientationAdjustment - paddingAdjustment)
+        .clamp(5, 40)
+        .toInt();
   }
 }
 
