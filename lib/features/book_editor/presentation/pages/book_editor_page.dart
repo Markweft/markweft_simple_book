@@ -1,13 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:markdown_widget/markdown_widget.dart';
-import 'package:markweft_simple_book/features/book_editor/application/book_document_parser.dart';
-import 'package:markweft_simple_book/features/book_editor/application/book_table_paginator.dart';
-import 'package:markweft_simple_book/features/book_editor/domain/entities/book_page.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
+import 'package:markweft_template_simple/markweft_template_simple.dart';
+import 'package:path/path.dart' as path;
 
 final class BookEditorPage extends StatefulWidget {
   const BookEditorPage({
@@ -28,8 +28,11 @@ final class BookEditorPage extends StatefulWidget {
 enum SaveStatus { loading, saved, saving, failed }
 
 final class _BookEditorPageState extends State<BookEditorPage> {
-  static const BookDocumentParser _parser = BookDocumentParser();
-  static const BookTablePaginator _tablePaginator = BookTablePaginator();
+  static const SimpleBookTemplate _template = SimpleBookTemplate();
+  static const XTypeGroup _pdfType = XTypeGroup(
+    label: 'PDF document',
+    extensions: <String>['pdf'],
+  );
 
   late final TextEditingController _controller;
   Timer? _saveDebounce;
@@ -37,17 +40,11 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   String? _pendingMarkdown;
   String? _errorMessage;
   bool _saveInProgress = false;
+  bool _pdfInProgress = false;
   Completer<void>? _saveCompleter;
   SaveStatus _saveStatus = SaveStatus.loading;
-  BookPageSettings _defaults = const BookPageSettings();
 
-  List<BookPageDocument> get _pages {
-    final logicalPages = _parser.parse(
-      _markdown,
-      defaults: _defaults,
-    );
-    return _tablePaginator.paginate(logicalPages);
-  }
+  BookDocument get _document => _template.parse(_markdown);
 
   @override
   void initState() {
@@ -65,8 +62,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _loadBook() async {
     try {
-      final markdown =
-          await widget.projectRepository.loadMarkdown(widget.project);
+      final markdown = await widget.projectRepository.loadMarkdown(
+        widget.project,
+      );
       if (!mounted) return;
 
       _controller.text = markdown;
@@ -145,6 +143,42 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     await _queueSave(_controller.text);
   }
 
+  Future<void> _exportPdf() async {
+    if (_pdfInProgress) return;
+
+    final location = await getSaveLocation(
+      suggestedName:
+          '${path.basenameWithoutExtension(widget.project.file.path)}.pdf',
+      acceptedTypeGroups: const <XTypeGroup>[_pdfType],
+    );
+    if (location == null) return;
+
+    setState(() {
+      _pdfInProgress = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _saveNow();
+      final bytes = await _template.buildPdf(_document).save();
+      await File(location.path).writeAsBytes(bytes, flush: true);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF exported to ${location.path}')),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Unable to export PDF: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _pdfInProgress = false);
+      }
+    }
+  }
+
   Future<void> _closeBook() async {
     _saveDebounce?.cancel();
     await _queueSave(_controller.text);
@@ -154,7 +188,8 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = _pages;
+    final document = _document;
+    final pageCount = document.pages.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -168,7 +203,8 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           children: [
             Text(widget.project.title),
             Text(
-              widget.project.file.path,
+              '${_template.metadata.name} template '
+              'v${_template.metadata.version} · ${widget.project.file.path}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
@@ -177,11 +213,21 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         ),
         actions: [
           Center(
-            child: Text(
-              '${pages.length} ${pages.length == 1 ? 'page' : 'pages'}',
-            ),
+            child: Text('$pageCount ${pageCount == 1 ? 'page' : 'pages'}'),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
+          IconButton(
+            tooltip: 'Export PDF',
+            onPressed: _saveStatus == SaveStatus.loading || _pdfInProgress
+                ? null
+                : _exportPdf,
+            icon: _pdfInProgress
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.picture_as_pdf_outlined),
+          ),
           IconButton(
             tooltip: 'Save now',
             onPressed: _saveStatus == SaveStatus.loading ? null : _saveNow,
@@ -215,12 +261,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                         controller: _controller,
                         onChanged: _onMarkdownChanged,
                       );
-                      final preview = _BookPreview(
-                        pages: pages,
-                        defaults: _defaults,
-                        onDefaultsChanged: (value) {
-                          setState(() => _defaults = value);
-                        },
+                      final preview = _TemplatePreview(
+                        template: _template,
+                        document: document,
                       );
 
                       if (constraints.maxWidth >= 900) {
@@ -249,35 +292,6 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   }
 }
 
-final class _SaveStatusView extends StatelessWidget {
-  const _SaveStatusView({required this.status, required this.path});
-
-  final SaveStatus status;
-  final String path;
-
-  @override
-  Widget build(BuildContext context) {
-    final (icon, label) = switch (status) {
-      SaveStatus.loading => (Icons.hourglass_empty, 'Loading'),
-      SaveStatus.saving => (Icons.sync, 'Saving...'),
-      SaveStatus.saved => (Icons.check_circle_outline, 'Saved'),
-      SaveStatus.failed => (Icons.error_outline, 'Save failed'),
-    };
-
-    return Tooltip(
-      message: path,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 6),
-          Text(label),
-        ],
-      ),
-    );
-  }
-}
-
 final class _MarkdownEditor extends StatelessWidget {
   const _MarkdownEditor({
     required this.controller,
@@ -292,7 +306,7 @@ final class _MarkdownEditor extends StatelessWidget {
     return ColoredBox(
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -301,17 +315,18 @@ final class _MarkdownEditor extends StatelessWidget {
                 Text('Markdown', style: Theme.of(context).textTheme.titleLarge),
                 const Spacer(),
                 const Tooltip(
-                  message: 'Use the toolbar to insert Markdown commands.',
-                  child: Icon(Icons.help_outline, size: 18),
+                  message: 'Preview and PDF are rendered by '
+                      'markweft_template_simple.',
+                  child: Icon(Icons.extension_outlined, size: 19),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             MarkdownCommandToolbar(
               controller: controller,
               onChanged: onChanged,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Expanded(
               child: TextField(
                 controller: controller,
@@ -339,16 +354,14 @@ final class _MarkdownEditor extends StatelessWidget {
   }
 }
 
-final class _BookPreview extends StatelessWidget {
-  const _BookPreview({
-    required this.pages,
-    required this.defaults,
-    required this.onDefaultsChanged,
+final class _TemplatePreview extends StatelessWidget {
+  const _TemplatePreview({
+    required this.template,
+    required this.document,
   });
 
-  final List<BookPageDocument> pages;
-  final BookPageSettings defaults;
-  final ValueChanged<BookPageSettings> onDefaultsChanged;
+  final SimpleBookTemplate template;
+  final BookDocument document;
 
   @override
   Widget build(BuildContext context) {
@@ -356,278 +369,58 @@ final class _BookPreview extends StatelessWidget {
       color: const Color(0xFFE8E3DB),
       child: Column(
         children: [
-          _PreviewControls(
-            defaults: defaults,
-            pageCount: pages.length,
-            onChanged: onDefaultsChanged,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_awesome_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${template.metadata.name} · '
+                    '${template.metadata.id} · '
+                    '${document.pages.length} pages',
+                  ),
+                ),
+              ],
+            ),
           ),
           const Divider(height: 1),
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(32),
-              itemCount: pages.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 32),
-              itemBuilder: (context, index) {
-                return _BookPageCard(
-                  page: pages[index],
-                  pageNumber: index + 1,
-                  pageCount: pages.length,
-                );
-              },
-            ),
-          ),
+          Expanded(child: template.buildDocument(document)),
         ],
       ),
     );
   }
 }
 
-final class _PreviewControls extends StatelessWidget {
-  const _PreviewControls({
-    required this.defaults,
-    required this.pageCount,
-    required this.onChanged,
+final class _SaveStatusView extends StatelessWidget {
+  const _SaveStatusView({
+    required this.status,
+    required this.path,
   });
 
-  final BookPageSettings defaults;
-  final int pageCount;
-  final ValueChanged<BookPageSettings> onChanged;
+  final SaveStatus status;
+  final String path;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    final (icon, label) = switch (status) {
+      SaveStatus.loading => (Icons.hourglass_empty, 'Loading'),
+      SaveStatus.saving => (Icons.sync, 'Saving...'),
+      SaveStatus.saved => (Icons.check_circle_outline, 'Saved'),
+      SaveStatus.failed => (Icons.error_outline, 'Save failed'),
+    };
+
+    return Tooltip(
+      message: path,
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$pageCount ${pageCount == 1 ? 'page' : 'pages'}'),
-          const SizedBox(width: 20),
-          DropdownButton<BookPageSize>(
-            value: defaults.size,
-            onChanged: (value) {
-              if (value != null) onChanged(defaults.copyWith(size: value));
-            },
-            items: BookPageSize.values
-                .map(
-                  (size) => DropdownMenuItem(
-                    value: size,
-                    child: Text(size.name.toUpperCase()),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(width: 12),
-          DropdownButton<BookPageOrientation>(
-            value: defaults.orientation,
-            onChanged: (value) {
-              if (value != null) {
-                onChanged(defaults.copyWith(orientation: value));
-              }
-            },
-            items: BookPageOrientation.values
-                .map(
-                  (orientation) => DropdownMenuItem(
-                    value: orientation,
-                    child: Text(orientation.name),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(width: 20),
-          Text('Margin ${defaults.margin.round()}'),
-          SizedBox(
-            width: 130,
-            child: Slider(
-              value: defaults.margin,
-              min: 0,
-              max: 80,
-              divisions: 20,
-              onChanged: (value) {
-                onChanged(defaults.copyWith(margin: value));
-              },
-            ),
-          ),
-          Text('Padding ${defaults.padding.round()}'),
-          SizedBox(
-            width: 130,
-            child: Slider(
-              value: defaults.padding,
-              min: 8,
-              max: 100,
-              divisions: 23,
-              onChanged: (value) {
-                onChanged(defaults.copyWith(padding: value));
-              },
-            ),
-          ),
+          Icon(icon, size: 18),
+          const SizedBox(width: 6),
+          Text(label),
         ],
       ),
-    );
-  }
-}
-
-final class _BookPageCard extends StatelessWidget {
-  const _BookPageCard({
-    required this.page,
-    required this.pageNumber,
-    required this.pageCount,
-  });
-
-  final BookPageDocument page;
-  final int pageNumber;
-  final int pageCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = page.settings;
-
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(settings.margin),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: AspectRatio(
-            aspectRatio: settings.aspectRatio,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 20,
-                    offset: Offset(0, 8),
-                    color: Color(0x33000000),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        settings.padding,
-                        settings.padding,
-                        settings.padding,
-                        settings.padding + 24,
-                      ),
-                      child: _PageLayout(
-                        layout: settings.layout,
-                        markdown: page.markdown,
-                        template: settings.template,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 14,
-                    bottom: 10,
-                    child: Text(
-                      '$pageNumber / $pageCount',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                  Positioned(
-                    left: 14,
-                    bottom: 10,
-                    child: Text(
-                      '${settings.size.name.toUpperCase()} · '
-                      '${settings.orientation.name} · ${settings.layout}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-final class _PageLayout extends StatelessWidget {
-  const _PageLayout({
-    required this.layout,
-    required this.markdown,
-    required this.template,
-  });
-
-  final String layout;
-  final String markdown;
-  final Map<String, Object?> template;
-
-  @override
-  Widget build(BuildContext context) {
-    if (layout.toLowerCase() == 'test') {
-      final title = template['title']?.toString();
-      final description = template['description']?.toString();
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title != null && title.isNotEmpty)
-            Text(title, style: Theme.of(context).textTheme.headlineMedium),
-          if (description != null && description.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(description),
-            const Divider(height: 28),
-          ],
-          Expanded(child: _MarkdownPage(markdown: markdown)),
-        ],
-      );
-    }
-
-    return _MarkdownPage(markdown: markdown);
-  }
-}
-
-final class _MarkdownPage extends StatelessWidget {
-  const _MarkdownPage({required this.markdown});
-
-  final String markdown;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return ClipRect(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: MarkdownWidget(
-                data: markdown,
-                shrinkWrap: true,
-                config: MarkdownConfig(
-                  configs: [
-                    const H1Config(
-                      style: TextStyle(
-                        color: Color(0xFF2B2520),
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                    ),
-                    const H2Config(
-                      style: TextStyle(
-                        color: Color(0xFF4A4036),
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        height: 1.3,
-                      ),
-                    ),
-                    const PConfig(
-                      textStyle: TextStyle(
-                        color: Color(0xFF302C28),
-                        fontSize: 16,
-                        height: 1.55,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

@@ -146,7 +146,6 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     await saveProject(project);
   }
 
-  @override
   Future<void> saveProject(MarkweftProject project) async {
     final archive = Archive();
     await _appendDirectoryToArchive(
@@ -157,9 +156,8 @@ final class MdwBookProjectRepository implements BookProjectRepository {
 
     final encoded = ZipEncoder().encode(archive);
 
-    // macOS sandbox grants access to the exact file selected by the user,
-    // not necessarily to a sibling `${file}.tmp`. Write to the selected file
-    // directly so create and autosave work on Desktop/Documents.
+    // The macOS sandbox grants access to the exact user-selected file. Writing
+    // a sibling .tmp file can fail, so save directly to the selected .mdw.
     await project.file.writeAsBytes(encoded, flush: true);
   }
 
@@ -189,6 +187,9 @@ final class MdwBookProjectRepository implements BookProjectRepository {
       'format: markweft\n'
       'version: 1\n'
       'title: ${jsonEncode(project.title)}\n'
+      'template:\n'
+      '  id: markweft.simple\n'
+      '  version: 0.1.0\n'
       'content: content/book.md\n'
       'assets: assets\n'
       'files: files\n',
@@ -282,8 +283,8 @@ Start writing your book here.
 ## First section
 
 - Edit Markdown on the left
-- Preview pages on the right
-- Use `<!-- page -->` to start a new page
+- Preview is rendered by the Simple template
+- Export the same template output to PDF
 
 <!-- page -->
 
