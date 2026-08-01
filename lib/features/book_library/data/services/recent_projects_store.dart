@@ -33,9 +33,8 @@ final class RecentProjectsStore {
   Future<List<String>> remove(String projectPath) async {
     final preferences = await SharedPreferences.getInstance();
     final current = await load();
-    final updated = current
-        .where((path) => path != projectPath)
-        .toList(growable: false);
+    final updated =
+        current.where((path) => path != projectPath).toList(growable: false);
 
     await preferences.setStringList(_storageKey, updated);
     return updated;

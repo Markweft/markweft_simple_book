@@ -66,8 +66,8 @@ final class BookDocumentParser {
 
       return defaults.copyWith(
         size: _parseSize(map['size']?.toString()) ?? defaults.size,
-        orientation: _parseOrientation(orientationValue) ??
-            defaults.orientation,
+        orientation:
+            _parseOrientation(orientationValue) ?? defaults.orientation,
         margin: _parseDimension(map['margin']) ?? defaults.margin,
         padding: _parseDimension(map['padding']) ?? defaults.padding,
         layout: _normalizeLayout(map['layout']) ?? defaults.layout,

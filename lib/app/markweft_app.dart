@@ -16,11 +16,9 @@ final class MarkweftApp extends StatefulWidget {
 }
 
 final class _MarkweftAppState extends State<MarkweftApp> {
-  final BookProjectRepository _projectRepository =
-      MdwBookProjectRepository();
+  final BookProjectRepository _projectRepository = MdwBookProjectRepository();
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
-  final GlobalKey<NavigatorState> _navigatorKey =
-      GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   MarkweftProject? _activeProject;
   List<String> _recentProjects = const <String>[];
   bool _isBusy = false;
