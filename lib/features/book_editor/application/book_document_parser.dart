@@ -5,8 +5,9 @@ final class BookDocumentParser {
   const BookDocumentParser();
 
   static final RegExp _pageDirective = RegExp(
-    r'<!--\s*page(?<attributes>[\s\S]*?)-->',
+    r'^[ \t]*<!--[ \t]*page(?<attributes>(?:[ \t]*\r?\n[\s\S]*?)?)[ \t]*-->[ \t]*$',
     caseSensitive: false,
+    multiLine: true,
   );
 
   List<BookPageDocument> parse(
