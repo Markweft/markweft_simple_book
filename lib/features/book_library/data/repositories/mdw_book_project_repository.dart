@@ -23,13 +23,13 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   @override
   Future<MarkweftProject?> createProject({required String title}) async {
     final location = await getSaveLocation(
-      suggestedName: '${_safeFileName(title)}.mdw',
+      suggestedName: _safeFileName(title),
       acceptedTypeGroups: const <XTypeGroup>[_projectType],
     );
     if (location == null) return null;
 
     final project = MarkweftProject(
-      file: File(_ensureMdwExtension(location.path)),
+      file: File(_normalizeMdwPath(location.path)),
       workspace: await _createWorkspace(),
       title: title.trim(),
     );
@@ -47,13 +47,13 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     if (markdownFile == null) return null;
 
     final location = await getSaveLocation(
-      suggestedName: '${_safeFileName(title)}.mdw',
+      suggestedName: _safeFileName(title),
       acceptedTypeGroups: const <XTypeGroup>[_projectType],
     );
     if (location == null) return null;
 
     final project = MarkweftProject(
-      file: File(_ensureMdwExtension(location.path)),
+      file: File(_normalizeMdwPath(location.path)),
       workspace: await _createWorkspace(),
       title: title.trim(),
     );
@@ -156,15 +156,11 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    await project.file.parent.create(recursive: true);
 
-    final temporaryFile = File('${project.file.path}.tmp');
-    await temporaryFile.writeAsBytes(encoded, flush: true);
-
-    if (await project.file.exists()) {
-      await project.file.delete();
-    }
-    await temporaryFile.rename(project.file.path);
+    // macOS sandbox grants access to the exact file selected by the user,
+    // not necessarily to a sibling `${file}.tmp`. Write to the selected file
+    // directly so create and autosave work on Desktop/Documents.
+    await project.file.writeAsBytes(encoded, flush: true);
   }
 
   @override
@@ -201,8 +197,6 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   }
 
   Future<Directory> _createWorkspace() async {
-    // Directory.systemTemp points to a real OS temporary directory and avoids
-    // the missing sandbox cache directory returned by path_provider on macOS.
     final root = Directory(
       path.join(Directory.systemTemp.path, 'markweft_workspaces'),
     );
@@ -263,8 +257,12 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     return null;
   }
 
-  String _ensureMdwExtension(String value) {
-    return value.toLowerCase().endsWith('.mdw') ? value : '$value.mdw';
+  String _normalizeMdwPath(String value) {
+    final withoutRepeatedExtensions = value.replaceFirst(
+      RegExp(r'(?:\.mdw)+$', caseSensitive: false),
+      '',
+    );
+    return '$withoutRepeatedExtensions.mdw';
   }
 
   String _safeFileName(String value) {
