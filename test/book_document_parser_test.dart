@@ -13,6 +13,33 @@ void main() {
     expect(pages.last.markdown, '# Two');
   });
 
+  test('does not split an inline page directive example', () {
+    final pages = parser.parse('''
+# One
+
+Use `<!-- page -->` to start a new page.
+
+<!-- page -->
+
+# Two
+''');
+
+    expect(pages, hasLength(2));
+    expect(
+      pages.first.markdown,
+      contains('Use `<!-- page -->` to start a new page.'),
+    );
+    expect(pages.last.markdown, '# Two');
+  });
+
+  test('does not split ordinary text containing the directive', () {
+    final pages = parser.parse(
+      '# One\n\nExample: <!-- page --> is a page break.',
+    );
+
+    expect(pages, hasLength(1));
+  });
+
   test('applies page attribute overrides to the following page', () {
     final pages = parser.parse('''
 # One
