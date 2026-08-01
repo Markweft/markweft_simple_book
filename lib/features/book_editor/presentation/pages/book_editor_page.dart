@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:markweft_simple_book/features/book_editor/application/book_document_parser.dart';
+import 'package:markweft_simple_book/features/book_editor/application/book_table_paginator.dart';
 import 'package:markweft_simple_book/features/book_editor/domain/entities/book_page.dart';
+import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
 
@@ -25,8 +27,9 @@ final class BookEditorPage extends StatefulWidget {
 
 enum SaveStatus { loading, saved, saving, failed }
 
-class _BookEditorPageState extends State<BookEditorPage> {
+final class _BookEditorPageState extends State<BookEditorPage> {
   static const BookDocumentParser _parser = BookDocumentParser();
+  static const BookTablePaginator _tablePaginator = BookTablePaginator();
 
   late final TextEditingController _controller;
   Timer? _saveDebounce;
@@ -38,10 +41,13 @@ class _BookEditorPageState extends State<BookEditorPage> {
   SaveStatus _saveStatus = SaveStatus.loading;
   BookPageSettings _defaults = const BookPageSettings();
 
-  List<BookPageDocument> get _pages => _parser.parse(
-        _markdown,
-        defaults: _defaults,
-      );
+  List<BookPageDocument> get _pages {
+    final logicalPages = _parser.parse(
+      _markdown,
+      defaults: _defaults,
+    );
+    return _tablePaginator.paginate(logicalPages);
+  }
 
   @override
   void initState() {
@@ -59,10 +65,9 @@ class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _loadBook() async {
     try {
-      final markdown = await widget.projectRepository.loadMarkdown(widget.project);
-      if (!mounted) {
-        return;
-      }
+      final markdown =
+          await widget.projectRepository.loadMarkdown(widget.project);
+      if (!mounted) return;
 
       _controller.text = markdown;
       setState(() {
@@ -71,9 +76,7 @@ class _BookEditorPageState extends State<BookEditorPage> {
         _errorMessage = null;
       });
     } on Object catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _saveStatus = SaveStatus.failed;
         _errorMessage = 'Unable to load this book: $error';
@@ -138,25 +141,15 @@ class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _saveNow() async {
     _saveDebounce?.cancel();
-    setState(() {
-      _saveStatus = SaveStatus.saving;
-    });
+    setState(() => _saveStatus = SaveStatus.saving);
     await _queueSave(_controller.text);
   }
 
   Future<void> _closeBook() async {
     _saveDebounce?.cancel();
     await _queueSave(_controller.text);
-    if (!mounted || _saveStatus == SaveStatus.failed) {
-      return;
-    }
+    if (!mounted || _saveStatus == SaveStatus.failed) return;
     await widget.onClose();
-  }
-
-  void _updateDefaults(BookPageSettings value) {
-    setState(() {
-      _defaults = value;
-    });
   }
 
   @override
@@ -188,7 +181,7 @@ class _BookEditorPageState extends State<BookEditorPage> {
               '${pages.length} ${pages.length == 1 ? 'page' : 'pages'}',
             ),
           ),
-          const SizedBox(width: 18),
+          const SizedBox(width: 16),
           IconButton(
             tooltip: 'Save now',
             onPressed: _saveStatus == SaveStatus.loading ? null : _saveNow,
@@ -210,10 +203,7 @@ class _BookEditorPageState extends State<BookEditorPage> {
               content: Text(_errorMessage!),
               leading: const Icon(Icons.error_outline),
               actions: [
-                TextButton(
-                  onPressed: _saveNow,
-                  child: const Text('Retry'),
-                ),
+                TextButton(onPressed: _saveNow, child: const Text('Retry')),
               ],
             ),
           Expanded(
@@ -221,45 +211,33 @@ class _BookEditorPageState extends State<BookEditorPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      final isDesktop = constraints.maxWidth >= 900;
+                      final editor = _MarkdownEditor(
+                        controller: _controller,
+                        onChanged: _onMarkdownChanged,
+                      );
+                      final preview = _BookPreview(
+                        pages: pages,
+                        defaults: _defaults,
+                        onDefaultsChanged: (value) {
+                          setState(() => _defaults = value);
+                        },
+                      );
 
-                      if (isDesktop) {
+                      if (constraints.maxWidth >= 900) {
                         return Row(
                           children: [
-                            Expanded(
-                              child: _MarkdownEditor(
-                                controller: _controller,
-                                onChanged: _onMarkdownChanged,
-                              ),
-                            ),
+                            Expanded(child: editor),
                             const VerticalDivider(width: 1),
-                            Expanded(
-                              child: _BookPreview(
-                                pages: pages,
-                                defaults: _defaults,
-                                onDefaultsChanged: _updateDefaults,
-                              ),
-                            ),
+                            Expanded(child: preview),
                           ],
                         );
                       }
 
                       return Column(
                         children: [
-                          Expanded(
-                            child: _MarkdownEditor(
-                              controller: _controller,
-                              onChanged: _onMarkdownChanged,
-                            ),
-                          ),
+                          Expanded(child: editor),
                           const Divider(height: 1),
-                          Expanded(
-                            child: _BookPreview(
-                              pages: pages,
-                              defaults: _defaults,
-                              onDefaultsChanged: _updateDefaults,
-                            ),
-                          ),
+                          Expanded(child: preview),
                         ],
                       );
                     },
@@ -271,11 +249,8 @@ class _BookEditorPageState extends State<BookEditorPage> {
   }
 }
 
-class _SaveStatusView extends StatelessWidget {
-  const _SaveStatusView({
-    required this.status,
-    required this.path,
-  });
+final class _SaveStatusView extends StatelessWidget {
+  const _SaveStatusView({required this.status, required this.path});
 
   final SaveStatus status;
   final String path;
@@ -303,7 +278,7 @@ class _SaveStatusView extends StatelessWidget {
   }
 }
 
-class _MarkdownEditor extends StatelessWidget {
+final class _MarkdownEditor extends StatelessWidget {
   const _MarkdownEditor({
     required this.controller,
     required this.onChanged,
@@ -326,12 +301,17 @@ class _MarkdownEditor extends StatelessWidget {
                 Text('Markdown', style: Theme.of(context).textTheme.titleLarge),
                 const Spacer(),
                 const Tooltip(
-                  message: 'Insert <!-- page --> to start a new page.',
+                  message: 'Use the toolbar to insert Markdown commands.',
                   child: Icon(Icons.help_outline, size: 18),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            MarkdownCommandToolbar(
+              controller: controller,
+              onChanged: onChanged,
+            ),
+            const SizedBox(height: 8),
             Expanded(
               child: TextField(
                 controller: controller,
@@ -359,7 +339,7 @@ class _MarkdownEditor extends StatelessWidget {
   }
 }
 
-class _BookPreview extends StatelessWidget {
+final class _BookPreview extends StatelessWidget {
   const _BookPreview({
     required this.pages,
     required this.defaults,
@@ -402,7 +382,7 @@ class _BookPreview extends StatelessWidget {
   }
 }
 
-class _PreviewControls extends StatelessWidget {
+final class _PreviewControls extends StatelessWidget {
   const _PreviewControls({
     required this.defaults,
     required this.pageCount,
@@ -486,7 +466,7 @@ class _PreviewControls extends StatelessWidget {
   }
 }
 
-class _BookPageCard extends StatelessWidget {
+final class _BookPageCard extends StatelessWidget {
   const _BookPageCard({
     required this.page,
     required this.pageNumber,
@@ -523,7 +503,12 @@ class _BookPageCard extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: Padding(
-                      padding: EdgeInsets.all(settings.padding),
+                      padding: EdgeInsets.fromLTRB(
+                        settings.padding,
+                        settings.padding,
+                        settings.padding,
+                        settings.padding + 24,
+                      ),
                       child: _PageLayout(
                         layout: settings.layout,
                         markdown: page.markdown,
@@ -558,7 +543,7 @@ class _BookPageCard extends StatelessWidget {
   }
 }
 
-class _PageLayout extends StatelessWidget {
+final class _PageLayout extends StatelessWidget {
   const _PageLayout({
     required this.layout,
     required this.markdown,
@@ -571,81 +556,78 @@ class _PageLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return switch (layout.toLowerCase()) {
-      'test' => _TestPageLayout(markdown: markdown, template: template),
-      _ => MarkdownWidget(
-          data: markdown,
-          shrinkWrap: true,
-          config: _markdownConfig,
-        ),
-    };
+    if (layout.toLowerCase() == 'test') {
+      final title = template['title']?.toString();
+      final description = template['description']?.toString();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null && title.isNotEmpty)
+            Text(title, style: Theme.of(context).textTheme.headlineMedium),
+          if (description != null && description.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(description),
+            const Divider(height: 28),
+          ],
+          Expanded(child: _MarkdownPage(markdown: markdown)),
+        ],
+      );
+    }
+
+    return _MarkdownPage(markdown: markdown);
   }
 }
 
-class _TestPageLayout extends StatelessWidget {
-  const _TestPageLayout({
-    required this.markdown,
-    required this.template,
-  });
+final class _MarkdownPage extends StatelessWidget {
+  const _MarkdownPage({required this.markdown});
 
   final String markdown;
-  final Map<String, Object?> template;
 
   @override
   Widget build(BuildContext context) {
-    final title = template['title']?.toString();
-    final description = template['description']?.toString();
-    final image = template['image']?.toString();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title != null && title.isNotEmpty)
-          Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        if (description != null && description.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(description),
-        ],
-        if (image != null && image.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text('Image: $image', style: Theme.of(context).textTheme.bodySmall),
-        ],
-        if (template.isNotEmpty) const Divider(height: 28),
-        Expanded(
-          child: MarkdownWidget(
-            data: markdown,
-            config: _markdownConfig,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ClipRect(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: MarkdownWidget(
+                data: markdown,
+                shrinkWrap: true,
+                config: MarkdownConfig(
+                  configs: [
+                    const H1Config(
+                      style: TextStyle(
+                        color: Color(0xFF2B2520),
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    const H2Config(
+                      style: TextStyle(
+                        color: Color(0xFF4A4036),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                      ),
+                    ),
+                    const PConfig(
+                      textStyle: TextStyle(
+                        color: Color(0xFF302C28),
+                        fontSize: 16,
+                        height: 1.55,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
-
-final MarkdownConfig _markdownConfig = MarkdownConfig(
-  configs: const [
-    H1Config(
-      style: TextStyle(
-        color: Color(0xFF2B2520),
-        fontSize: 38,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-      ),
-    ),
-    H2Config(
-      style: TextStyle(
-        color: Color(0xFF4A4036),
-        fontSize: 25,
-        fontWeight: FontWeight.w600,
-        height: 1.3,
-      ),
-    ),
-    PConfig(
-      textStyle: TextStyle(
-        color: Color(0xFF302C28),
-        fontSize: 17,
-        height: 1.65,
-      ),
-    ),
-  ],
-);
