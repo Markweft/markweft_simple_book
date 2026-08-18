@@ -60,7 +60,7 @@ final class BookSettingsJson {
       ),
       margin: _double(decoded['margin'], 24),
       contentPadding: _double(decoded['contentPadding'], 48),
-      defaultColumns: _int(decoded['defaultColumns'], 1).clamp(1, 3),
+      defaultColumns: _columns(decoded['defaultColumns']),
       languageCode: _string(decoded['languageCode'], 'en'),
       direction: _enumValue(
         BookDirection.values,
@@ -83,6 +83,13 @@ final class BookSettingsJson {
 
   static int _int(Object? value, int fallback) {
     return value is num ? value.toInt() : int.tryParse('$value') ?? fallback;
+  }
+
+  static int _columns(Object? value) {
+    final parsed = _int(value, 1);
+    if (parsed < 1) return 1;
+    if (parsed > 3) return 3;
+    return parsed;
   }
 
   static double _double(Object? value, double fallback) {
