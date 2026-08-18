@@ -31,6 +31,8 @@ abstract interface class BookProjectRepository {
 
   Future<String> loadWholeBookMarkdown(MarkweftProject project);
 
+  Future<void> flushProject(MarkweftProject project);
+
   Future<String> loadMarkdown(MarkweftProject project);
 
   Future<void> saveMarkdown(
