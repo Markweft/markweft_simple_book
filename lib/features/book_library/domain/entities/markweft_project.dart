@@ -16,6 +16,10 @@ final class MarkweftProject {
         '${Platform.pathSeparator}book.md',
       );
 
+  File get settingsFile => File(
+        '${workspace.path}${Platform.pathSeparator}settings.json',
+      );
+
   Directory get assetsDirectory => Directory(
         '${workspace.path}${Platform.pathSeparator}assets',
       );
