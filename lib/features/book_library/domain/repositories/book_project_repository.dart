@@ -18,6 +18,22 @@ abstract interface class BookProjectRepository {
     required String title,
   });
 
+  Future<BookChapterFile> renameChapter(
+    MarkweftProject project,
+    BookChapterFile chapter, {
+    required String title,
+  });
+
+  Future<void> deleteChapter(
+    MarkweftProject project,
+    BookChapterFile chapter,
+  );
+
+  Future<void> reorderChapters(
+    MarkweftProject project,
+    List<BookChapterFile> chapters,
+  );
+
   Future<String> loadChapterMarkdown(
     MarkweftProject project,
     BookChapterFile chapter,
