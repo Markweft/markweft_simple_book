@@ -4,8 +4,10 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:markweft_simple_book/features/book_library/data/mappers/book_settings_json.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
+import 'package:markweft_template_simple/markweft_template_simple.dart';
 import 'package:path/path.dart' as path;
 import 'package:yaml/yaml.dart';
 
@@ -122,6 +124,12 @@ final class MdwBookProjectRepository implements BookProjectRepository {
 
       await project.imagesDirectory.create(recursive: true);
       await project.filesDirectory.create(recursive: true);
+      if (!await project.settingsFile.exists()) {
+        await project.settingsFile.writeAsString(
+          BookSettingsJson.encode(const BookSettings()),
+          flush: true,
+        );
+      }
       return project;
     } on Object {
       if (await workspace.exists()) {
@@ -143,6 +151,31 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   ) async {
     await project.markdownFile.parent.create(recursive: true);
     await project.markdownFile.writeAsString(markdown, flush: true);
+    await saveProject(project);
+  }
+
+  @override
+  Future<BookSettings> loadBookSettings(MarkweftProject project) async {
+    if (!await project.settingsFile.exists()) {
+      return const BookSettings();
+    }
+
+    try {
+      return BookSettingsJson.decode(await project.settingsFile.readAsString());
+    } on FormatException {
+      return const BookSettings();
+    }
+  }
+
+  @override
+  Future<void> saveBookSettings(
+    MarkweftProject project,
+    BookSettings settings,
+  ) async {
+    await project.settingsFile.writeAsString(
+      BookSettingsJson.encode(settings),
+      flush: true,
+    );
     await saveProject(project);
   }
 
@@ -181,15 +214,20 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     await File(path.join(project.filesDirectory.path, '.keep'))
         .writeAsString('');
     await project.markdownFile.writeAsString(markdown, flush: true);
+    await project.settingsFile.writeAsString(
+      BookSettingsJson.encode(const BookSettings()),
+      flush: true,
+    );
 
     await File(path.join(project.workspace.path, 'manifest.yaml'))
         .writeAsString(
       'format: markweft\n'
-      'version: 1\n'
+      'version: 2\n'
       'title: ${jsonEncode(project.title)}\n'
       'template:\n'
       '  id: markweft.simple\n'
-      '  version: 0.1.0\n'
+      '  version: 0.2.0\n'
+      'settings: settings.json\n'
       'content: content/book.md\n'
       'assets: assets\n'
       'files: files\n',
@@ -276,7 +314,9 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   }
 }
 
-const String _starterBook = '''# New Markweft Book
+const String _starterBook = '''<!-- chapter: Chapter One -->
+
+# New Markweft Book
 
 Start writing your book here.
 
