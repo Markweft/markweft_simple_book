@@ -318,10 +318,15 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   }
 
   Future<bool> _ensureChapterStorage(MarkweftProject project) async {
-    if (await project.chaptersIndexFile.exists()) return false;
+    final hasLegacyBook = await project.markdownFile.exists();
+    if (await project.chaptersIndexFile.exists()) {
+      final existing = await _readChapterIndex(project);
+      if (existing.isNotEmpty || !hasLegacyBook) return false;
+      await project.chaptersIndexFile.delete();
+    }
 
     await project.chaptersDirectory.create(recursive: true);
-    if (!await project.markdownFile.exists()) {
+    if (!hasLegacyBook) {
       await _writeChapterIndex(project, const <BookChapterFile>[]);
       return true;
     }
