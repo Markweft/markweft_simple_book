@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:markweft_simple_book/features/book_library/data/mappers/book_settings_json.dart';
+import 'package:markweft_simple_book/features/book_library/domain/entities/book_chapter_file.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
@@ -22,6 +23,11 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     extensions: <String>['md', 'markdown'],
   );
 
+  static final RegExp _chapterDirective = RegExp(
+    r'^\s*<!--\s*chapter\s*:\s*(.*?)\s*-->\s*$',
+    caseSensitive: false,
+  );
+
   @override
   Future<MarkweftProject?> createProject({required String title}) async {
     final location = await getSaveLocation(
@@ -36,7 +42,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
       title: title.trim(),
     );
 
-    await _initializeWorkspace(project);
+    await _initializeWorkspace(project, markdown: _starterBook);
     await saveProject(project);
     return project;
   }
@@ -60,10 +66,10 @@ final class MdwBookProjectRepository implements BookProjectRepository {
       title: title.trim(),
     );
 
-    await _initializeWorkspace(
-      project,
-      markdown: await markdownFile.readAsString(),
-    );
+    await _initializeWorkspace(project);
+    await project.markdownFile.parent.create(recursive: true);
+    await markdownFile.saveTo(project.markdownFile.path);
+    await _ensureChapterStorage(project);
     await saveProject(project);
     return project;
   }
@@ -116,9 +122,11 @@ final class MdwBookProjectRepository implements BookProjectRepository {
         title: title,
       );
 
-      if (!await project.markdownFile.exists()) {
+      final hasLegacyBook = await project.markdownFile.exists();
+      final hasChapterIndex = await project.chaptersIndexFile.exists();
+      if (!hasLegacyBook && !hasChapterIndex) {
         throw const FormatException(
-          'Invalid .mdw project: content/book.md is missing.',
+          'Invalid .mdw project: chapter content is missing.',
         );
       }
 
@@ -130,6 +138,9 @@ final class MdwBookProjectRepository implements BookProjectRepository {
           flush: true,
         );
       }
+
+      final migrated = await _ensureChapterStorage(project);
+      if (migrated) await saveProject(project);
       return project;
     } on Object {
       if (await workspace.exists()) {
@@ -140,8 +151,73 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   }
 
   @override
+  Future<List<BookChapterFile>> loadChapters(MarkweftProject project) async {
+    await _ensureChapterStorage(project);
+    return _readChapterIndex(project);
+  }
+
+  @override
+  Future<BookChapterFile> createChapter(
+    MarkweftProject project, {
+    required String title,
+  }) async {
+    final chapters = await loadChapters(project);
+    final normalizedTitle = title.trim().isEmpty ? 'Untitled chapter' : title.trim();
+    final id = 'chapter-${DateTime.now().microsecondsSinceEpoch}';
+    final chapter = BookChapterFile(
+      id: id,
+      title: normalizedTitle,
+      fileName: '$id.md',
+    );
+
+    await project.chapterFile(chapter.fileName).writeAsString(
+      '<!-- chapter: ${_safeDirectiveTitle(normalizedTitle)} -->\n\n'
+      '# $normalizedTitle\n\n',
+      flush: true,
+    );
+    await _writeChapterIndex(project, <BookChapterFile>[...chapters, chapter]);
+    await saveProject(project);
+    return chapter;
+  }
+
+  @override
+  Future<String> loadChapterMarkdown(
+    MarkweftProject project,
+    BookChapterFile chapter,
+  ) {
+    return project.chapterFile(chapter.fileName).readAsString();
+  }
+
+  @override
+  Future<void> saveChapterMarkdown(
+    MarkweftProject project,
+    BookChapterFile chapter,
+    String markdown,
+  ) async {
+    final file = project.chapterFile(chapter.fileName);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(markdown, flush: true);
+  }
+
+  @override
+  Future<String> loadWholeBookMarkdown(MarkweftProject project) async {
+    final chapters = await loadChapters(project);
+    final buffer = StringBuffer();
+
+    for (var index = 0; index < chapters.length; index++) {
+      if (index > 0) buffer.write('\n\n');
+      buffer.write(await loadChapterMarkdown(project, chapters[index]));
+    }
+
+    return buffer.toString();
+  }
+
+  @override
+  Future<void> flushProject(MarkweftProject project) => saveProject(project);
+
+  @override
   Future<String> loadMarkdown(MarkweftProject project) {
-    return project.markdownFile.readAsString();
+    return loadWholeBookMarkdown(project);
   }
 
   @override
@@ -151,6 +227,10 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   ) async {
     await project.markdownFile.parent.create(recursive: true);
     await project.markdownFile.writeAsString(markdown, flush: true);
+    if (await project.chaptersDirectory.exists()) {
+      await project.chaptersDirectory.delete(recursive: true);
+    }
+    await _ensureChapterStorage(project);
     await saveProject(project);
   }
 
@@ -188,14 +268,12 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     );
 
     final encoded = ZipEncoder().encode(archive);
-
-    // The macOS sandbox grants access to the exact user-selected file. Writing
-    // a sibling .tmp file can fail, so save directly to the selected .mdw.
     await project.file.writeAsBytes(encoded, flush: true);
   }
 
   @override
   Future<void> closeProject(MarkweftProject project) async {
+    await saveProject(project);
     if (await project.workspace.exists()) {
       await project.workspace.delete(recursive: true);
     }
@@ -203,42 +281,141 @@ final class MdwBookProjectRepository implements BookProjectRepository {
 
   Future<void> _initializeWorkspace(
     MarkweftProject project, {
-    String markdown = _starterBook,
+    String? markdown,
   }) async {
-    await project.markdownFile.parent.create(recursive: true);
+    await project.chaptersDirectory.create(recursive: true);
     await project.imagesDirectory.create(recursive: true);
     await project.filesDirectory.create(recursive: true);
 
-    await File(path.join(project.imagesDirectory.path, '.keep'))
-        .writeAsString('');
-    await File(path.join(project.filesDirectory.path, '.keep'))
-        .writeAsString('');
-    await project.markdownFile.writeAsString(markdown, flush: true);
+    await File(path.join(project.imagesDirectory.path, '.keep')).writeAsString('');
+    await File(path.join(project.filesDirectory.path, '.keep')).writeAsString('');
     await project.settingsFile.writeAsString(
       BookSettingsJson.encode(const BookSettings()),
       flush: true,
     );
 
-    await File(path.join(project.workspace.path, 'manifest.yaml'))
-        .writeAsString(
+    if (markdown != null) {
+      await project.markdownFile.parent.create(recursive: true);
+      await project.markdownFile.writeAsString(markdown, flush: true);
+      await _ensureChapterStorage(project);
+    } else {
+      await _writeChapterIndex(project, const <BookChapterFile>[]);
+    }
+
+    await File(path.join(project.workspace.path, 'manifest.yaml')).writeAsString(
       'format: markweft\n'
-      'version: 2\n'
+      'version: 3\n'
       'title: ${jsonEncode(project.title)}\n'
       'template:\n'
       '  id: markweft.simple\n'
       '  version: 0.2.0\n'
       'settings: settings.json\n'
-      'content: content/book.md\n'
+      'content: content/chapters/index.json\n'
       'assets: assets\n'
       'files: files\n',
       flush: true,
     );
   }
 
-  Future<Directory> _createWorkspace() async {
-    final root = Directory(
-      path.join(Directory.systemTemp.path, 'markweft_workspaces'),
+  Future<bool> _ensureChapterStorage(MarkweftProject project) async {
+    if (await project.chaptersIndexFile.exists()) return false;
+
+    await project.chaptersDirectory.create(recursive: true);
+    if (!await project.markdownFile.exists()) {
+      await _writeChapterIndex(project, const <BookChapterFile>[]);
+      return true;
+    }
+
+    final chapters = <BookChapterFile>[];
+    IOSink? sink;
+    var ordinal = 0;
+
+    Future<void> startChapter(String title) async {
+      if (sink != null) {
+        await sink!.flush();
+        await sink!.close();
+      }
+
+      ordinal++;
+      final id = 'chapter-${ordinal.toString().padLeft(4, '0')}';
+      final chapter = BookChapterFile(
+        id: id,
+        title: title,
+        fileName: '$id.md',
+      );
+      chapters.add(chapter);
+      sink = project.chapterFile(chapter.fileName).openWrite();
+      sink!.writeln('<!-- chapter: ${_safeDirectiveTitle(title)} -->');
+      sink!.writeln();
+    }
+
+    await for (final line in project.markdownFile
+        .openRead()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())) {
+      final match = _chapterDirective.firstMatch(line);
+      if (match != null) {
+        final title = match.group(1)?.trim();
+        await startChapter(
+          title == null || title.isEmpty ? 'Chapter ${ordinal + 1}' : title,
+        );
+        continue;
+      }
+
+      if (sink == null) await startChapter(project.title);
+      sink!.writeln(line);
+    }
+
+    if (sink == null) await startChapter(project.title);
+    await sink!.flush();
+    await sink!.close();
+    await _writeChapterIndex(project, chapters);
+    await project.markdownFile.delete();
+    return true;
+  }
+
+  Future<List<BookChapterFile>> _readChapterIndex(
+    MarkweftProject project,
+  ) async {
+    final decoded = jsonDecode(await project.chaptersIndexFile.readAsString());
+    if (decoded is! List) {
+      throw const FormatException('Chapter index must be a JSON array.');
+    }
+
+    return List<BookChapterFile>.unmodifiable(
+      decoded.map((item) {
+        if (item is! Map<String, dynamic>) {
+          throw const FormatException('Invalid chapter entry.');
+        }
+        return BookChapterFile(
+          id: item['id']?.toString() ?? '',
+          title: item['title']?.toString() ?? 'Untitled chapter',
+          fileName: item['file']?.toString() ?? '',
+        );
+      }),
     );
+  }
+
+  Future<void> _writeChapterIndex(
+    MarkweftProject project,
+    List<BookChapterFile> chapters,
+  ) async {
+    await project.chaptersDirectory.create(recursive: true);
+    await project.chaptersIndexFile.writeAsString(
+      const JsonEncoder.withIndent('  ').convert([
+        for (final chapter in chapters)
+          <String, String>{
+            'id': chapter.id,
+            'title': chapter.title,
+            'file': chapter.fileName,
+          },
+      ]),
+      flush: true,
+    );
+  }
+
+  Future<Directory> _createWorkspace() async {
+    final root = Directory(path.join(Directory.systemTemp.path, 'markweft_workspaces'));
     await root.create(recursive: true);
     return root.createTemp('book_');
   }
@@ -248,10 +425,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     required Directory directory,
     required String rootPath,
   }) async {
-    await for (final entity in directory.list(
-      recursive: true,
-      followLinks: false,
-    )) {
+    await for (final entity in directory.list(recursive: true, followLinks: false)) {
       if (entity is! File) continue;
 
       final relativePath = path.relative(entity.path, from: rootPath);
@@ -296,6 +470,8 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     return null;
   }
 
+  String _safeDirectiveTitle(String value) => value.replaceAll('-->', '—').trim();
+
   String _normalizeMdwPath(String value) {
     final withoutRepeatedExtensions = value.replaceFirst(
       RegExp(r'(?:\.mdw)+$', caseSensitive: false),
@@ -322,13 +498,8 @@ Start writing your book here.
 
 ## First section
 
-- Edit Markdown on the left
-- Preview is rendered by the Simple template
-- Export the same template output to PDF
-
-<!-- page -->
-
-# Page Two
-
-This is the second page.
+- Edit only the active chapter in the Markdown editor
+- Each chapter is stored as its own Markdown file
+- Preview renders only the active chapter while editing
+- Full-book parsing happens only for export
 ''';
