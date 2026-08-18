@@ -1,3 +1,4 @@
+import 'package:markweft_simple_book/features/book_library/domain/entities/book_chapter_file.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 
@@ -9,6 +10,26 @@ abstract interface class BookProjectRepository {
   Future<MarkweftProject?> pickAndOpenProject();
 
   Future<MarkweftProject> openProject(String projectPath);
+
+  Future<List<BookChapterFile>> loadChapters(MarkweftProject project);
+
+  Future<BookChapterFile> createChapter(
+    MarkweftProject project, {
+    required String title,
+  });
+
+  Future<String> loadChapterMarkdown(
+    MarkweftProject project,
+    BookChapterFile chapter,
+  );
+
+  Future<void> saveChapterMarkdown(
+    MarkweftProject project,
+    BookChapterFile chapter,
+    String markdown,
+  );
+
+  Future<String> loadWholeBookMarkdown(MarkweftProject project);
 
   Future<String> loadMarkdown(MarkweftProject project);
 
