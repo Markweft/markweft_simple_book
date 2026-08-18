@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:markweft_simple_book/features/book_editor/application/template_registry.dart';
+import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_settings_dialog.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';
+import 'package:markweft_simple_book/features/book_library/domain/entities/book_chapter_file.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
@@ -29,6 +31,7 @@ final class BookEditorPage extends StatefulWidget {
 enum SaveStatus { loading, saved, saving, failed }
 
 final class _BookEditorPageState extends State<BookEditorPage> {
+  static const int _livePreviewCharacterLimit = 350000;
   static const XTypeGroup _pdfType = XTypeGroup(
     label: 'PDF document',
     extensions: <String>['pdf'],
@@ -36,22 +39,29 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   late final TextEditingController _controller;
   Timer? _saveDebounce;
-  String _markdown = '';
+  Timer? _previewDebounce;
+  Timer? _projectFlushDebounce;
+
+  List<BookChapterFile> _chapters = const <BookChapterFile>[];
+  BookChapterFile? _activeChapter;
+  BookSettings _bookSettings = const BookSettings();
+  String _draftMarkdown = '';
+  String _previewMarkdown = '';
   String? _pendingMarkdown;
   String? _errorMessage;
   bool _saveInProgress = false;
   bool _pdfInProgress = false;
   bool _settingsInProgress = false;
+  bool _largeChapterPreviewPaused = false;
   Completer<void>? _saveCompleter;
   SaveStatus _saveStatus = SaveStatus.loading;
-  BookSettings _bookSettings = const BookSettings();
 
   BookTemplate get _template => TemplateRegistry.resolve(
         _bookSettings.templateId,
       );
 
-  BookDocument get _document => _template.parse(
-        _markdown,
+  BookDocument get _activeDocument => _template.parse(
+        _previewMarkdown,
         settings: _bookSettings,
       );
 
@@ -65,24 +75,39 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _previewDebounce?.cancel();
+    _projectFlushDebounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   Future<void> _loadBook() async {
     try {
-      final markdown = await widget.projectRepository.loadMarkdown(
-        widget.project,
-      );
       final settings = await widget.projectRepository.loadBookSettings(
         widget.project,
+      );
+      var chapters = await widget.projectRepository.loadChapters(widget.project);
+      if (chapters.isEmpty) {
+        await widget.projectRepository.createChapter(
+          widget.project,
+          title: 'Chapter One',
+        );
+        chapters = await widget.projectRepository.loadChapters(widget.project);
+      }
+
+      final firstChapter = chapters.first;
+      final markdown = await widget.projectRepository.loadChapterMarkdown(
+        widget.project,
+        firstChapter,
       );
       if (!mounted) return;
 
       _controller.text = markdown;
       setState(() {
-        _markdown = markdown;
         _bookSettings = settings;
+        _chapters = chapters;
+        _activeChapter = firstChapter;
+        _setLoadedMarkdown(markdown);
         _saveStatus = SaveStatus.saved;
         _errorMessage = null;
       });
@@ -95,18 +120,36 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     }
   }
 
+  void _setLoadedMarkdown(String markdown) {
+    _draftMarkdown = markdown;
+    _largeChapterPreviewPaused = markdown.length > _livePreviewCharacterLimit;
+    _previewMarkdown = _largeChapterPreviewPaused ? '' : markdown;
+  }
+
   void _onMarkdownChanged(String value) {
+    _draftMarkdown = value;
     setState(() {
-      _markdown = value;
       _saveStatus = SaveStatus.saving;
       _errorMessage = null;
+      _largeChapterPreviewPaused = value.length > _livePreviewCharacterLimit;
     });
 
     _saveDebounce?.cancel();
     _saveDebounce = Timer(
-      const Duration(milliseconds: 650),
+      const Duration(milliseconds: 500),
       () => unawaited(_queueSave(value)),
     );
+
+    _previewDebounce?.cancel();
+    if (!_largeChapterPreviewPaused) {
+      _previewDebounce = Timer(
+        const Duration(milliseconds: 300),
+        () {
+          if (!mounted) return;
+          setState(() => _previewMarkdown = _draftMarkdown);
+        },
+      );
+    }
   }
 
   Future<void> _queueSave(String markdown) {
@@ -125,11 +168,19 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   Future<void> _drainSaveQueue() async {
     try {
       while (_pendingMarkdown != null) {
+        final chapter = _activeChapter;
+        if (chapter == null) break;
+
         final value = _pendingMarkdown!;
         _pendingMarkdown = null;
-        await widget.projectRepository.saveMarkdown(widget.project, value);
+        await widget.projectRepository.saveChapterMarkdown(
+          widget.project,
+          chapter,
+          value,
+        );
       }
 
+      _scheduleProjectFlush();
       if (mounted) {
         setState(() {
           _saveStatus = SaveStatus.saved;
@@ -140,7 +191,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       if (mounted) {
         setState(() {
           _saveStatus = SaveStatus.failed;
-          _errorMessage = 'Unable to save the .mdw project: $error';
+          _errorMessage = 'Unable to save this chapter: $error';
         });
       }
     } finally {
@@ -150,39 +201,68 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     }
   }
 
-  Future<void> _saveNow() async {
-    _saveDebounce?.cancel();
-    setState(() => _saveStatus = SaveStatus.saving);
-    await _queueSave(_controller.text);
+  void _scheduleProjectFlush() {
+    _projectFlushDebounce?.cancel();
+    _projectFlushDebounce = Timer(
+      const Duration(seconds: 5),
+      () => unawaited(_flushProject()),
+    );
   }
 
-  Future<void> _showBookSettings() async {
-    final settings = await showDialog<BookSettings>(
-      context: context,
-      builder: (_) => _BookSettingsDialog(settings: _bookSettings),
-    );
-    if (settings == null || !mounted) return;
-
-    setState(() {
-      _bookSettings = settings;
-      _settingsInProgress = true;
-      _errorMessage = null;
-    });
-
+  Future<void> _flushProject() async {
     try {
-      await widget.projectRepository.saveBookSettings(
-        widget.project,
-        settings,
-      );
+      await widget.projectRepository.flushProject(widget.project);
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Unable to save book settings: $error';
+        _saveStatus = SaveStatus.failed;
+        _errorMessage = 'Chapter saved locally, but .mdw update failed: $error';
       });
-    } finally {
-      if (mounted) {
-        setState(() => _settingsInProgress = false);
-      }
+    }
+  }
+
+  Future<void> _saveNow({bool flushProject = true}) async {
+    _saveDebounce?.cancel();
+    setState(() => _saveStatus = SaveStatus.saving);
+    await _queueSave(_controller.text);
+    if (flushProject) {
+      _projectFlushDebounce?.cancel();
+      await _flushProject();
+    }
+  }
+
+  Future<void> _selectChapter(BookChapterFile chapter) async {
+    if (chapter.id == _activeChapter?.id || _saveStatus == SaveStatus.loading) {
+      return;
+    }
+
+    await _saveNow(flushProject: false);
+    if (!mounted || _saveStatus == SaveStatus.failed) return;
+
+    setState(() => _saveStatus = SaveStatus.loading);
+    try {
+      final markdown = await widget.projectRepository.loadChapterMarkdown(
+        widget.project,
+        chapter,
+      );
+      if (!mounted) return;
+
+      _controller.value = TextEditingValue(
+        text: markdown,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+      setState(() {
+        _activeChapter = chapter;
+        _setLoadedMarkdown(markdown);
+        _saveStatus = SaveStatus.saved;
+        _errorMessage = null;
+      });
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saveStatus = SaveStatus.failed;
+        _errorMessage = 'Unable to open chapter: $error';
+      });
     }
   }
 
@@ -222,29 +302,48 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     titleController.dispose();
     if (title == null || !mounted) return;
 
-    final safeTitle = title.replaceAll('-->', '—').trim();
-    final prefix = _controller.text.trimRight();
-    final separator = prefix.isEmpty ? '' : '\n\n';
-    final addition = '$separator<!-- chapter: $safeTitle -->\n\n# $safeTitle\n\n';
-    final value = '$prefix$addition';
-
-    _controller.value = TextEditingValue(
-      text: value,
-      selection: TextSelection.collapsed(offset: value.length),
+    await _saveNow(flushProject: false);
+    final chapter = await widget.projectRepository.createChapter(
+      widget.project,
+      title: title,
     );
-    _onMarkdownChanged(value);
+    final chapters = await widget.projectRepository.loadChapters(widget.project);
+    if (!mounted) return;
+    setState(() => _chapters = chapters);
+    await _selectChapter(chapter);
   }
 
-  void _jumpToChapter(int chapterIndex) {
-    final matches = RegExp(
-      r'^\s*<!--\s*chapter\s*:\s*.*?\s*-->\s*$',
-      caseSensitive: false,
-      multiLine: true,
-    ).allMatches(_controller.text).toList();
-    if (chapterIndex < 0 || chapterIndex >= matches.length) return;
+  Future<void> _showBookSettings() async {
+    final settings = await showDialog<BookSettings>(
+      context: context,
+      builder: (_) => BookSettingsDialog(settings: _bookSettings),
+    );
+    if (settings == null || !mounted) return;
 
-    final offset = matches[chapterIndex].start;
-    _controller.selection = TextSelection.collapsed(offset: offset);
+    setState(() {
+      _bookSettings = settings;
+      _settingsInProgress = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await widget.projectRepository.saveBookSettings(widget.project, settings);
+      if (!_largeChapterPreviewPaused) {
+        setState(() => _previewMarkdown = _draftMarkdown);
+      }
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Unable to save book settings: $error');
+    } finally {
+      if (mounted) setState(() => _settingsInProgress = false);
+    }
+  }
+
+  void _refreshLargeChapterPreview() {
+    setState(() {
+      _previewMarkdown = _draftMarkdown;
+      _largeChapterPreviewPaused = false;
+    });
   }
 
   Future<void> _exportPdf() async {
@@ -264,7 +363,11 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
     try {
       await _saveNow();
-      final bytes = await _template.buildPdf(_document).save();
+      final markdown = await widget.projectRepository.loadWholeBookMarkdown(
+        widget.project,
+      );
+      final document = _template.parse(markdown, settings: _bookSettings);
+      final bytes = await _template.buildPdf(document).save();
       await File(location.path).writeAsBytes(bytes, flush: true);
 
       if (!mounted) return;
@@ -273,27 +376,28 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       );
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Unable to export PDF: $error';
-      });
+      setState(() => _errorMessage = 'Unable to export PDF: $error');
     } finally {
-      if (mounted) {
-        setState(() => _pdfInProgress = false);
-      }
+      if (mounted) setState(() => _pdfInProgress = false);
     }
   }
 
   Future<void> _closeBook() async {
     _saveDebounce?.cancel();
-    await _queueSave(_controller.text);
+    _previewDebounce?.cancel();
+    _projectFlushDebounce?.cancel();
+    await _saveNow();
     if (!mounted || _saveStatus == SaveStatus.failed) return;
     await widget.onClose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final document = _document;
-    final pageCount = document.pages.length;
+    final activeIndex = _chapters.indexWhere(
+      (chapter) => chapter.id == _activeChapter?.id,
+    );
+    final document = _largeChapterPreviewPaused ? null : _activeDocument;
+    final pageCount = document?.pages.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -307,8 +411,8 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           children: [
             Text(widget.project.title),
             Text(
-              '${_template.metadata.name} template '
-              'v${_template.metadata.version} · ${widget.project.file.path}',
+              '${_activeChapter?.title ?? 'Loading chapter'} · '
+              '${_template.metadata.name} v${_template.metadata.version}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
@@ -316,9 +420,13 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           ],
         ),
         actions: [
-          Center(
-            child: Text('$pageCount ${pageCount == 1 ? 'page' : 'pages'}'),
-          ),
+          if (activeIndex >= 0)
+            Center(
+              child: Text(
+                'Chapter ${activeIndex + 1}/${_chapters.length}'
+                '${pageCount == null ? '' : ' · $pageCount pages'}',
+              ),
+            ),
           const SizedBox(width: 8),
           IconButton(
             tooltip: 'Book settings',
@@ -380,22 +488,29 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                     builder: (context, constraints) {
                       final editor = _MarkdownEditor(
                         controller: _controller,
+                        chapterTitle: _activeChapter?.title,
                         onChanged: _onMarkdownChanged,
                       );
-                      final preview = _TemplatePreview(
-                        template: _template,
-                        document: document,
-                      );
+                      final preview = _largeChapterPreviewPaused
+                          ? _LargeChapterPreviewPaused(
+                              characters: _draftMarkdown.length,
+                              onRefresh: _refreshLargeChapterPreview,
+                            )
+                          : _TemplatePreview(
+                              template: _template,
+                              document: document!,
+                            );
                       final chapters = _ChapterSidebar(
-                        chapters: document.chapters,
+                        chapters: _chapters,
+                        activeChapterId: _activeChapter?.id,
                         onAddChapter: _addChapter,
-                        onSelectChapter: _jumpToChapter,
+                        onSelectChapter: _selectChapter,
                       );
 
                       if (constraints.maxWidth >= 1200) {
                         return Row(
                           children: [
-                            SizedBox(width: 240, child: chapters),
+                            SizedBox(width: 250, child: chapters),
                             const VerticalDivider(width: 1),
                             Expanded(child: editor),
                             const VerticalDivider(width: 1),
@@ -433,10 +548,12 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 final class _MarkdownEditor extends StatelessWidget {
   const _MarkdownEditor({
     required this.controller,
+    required this.chapterTitle,
     required this.onChanged,
   });
 
   final TextEditingController controller;
+  final String? chapterTitle;
   final ValueChanged<String> onChanged;
 
   @override
@@ -450,19 +567,21 @@ final class _MarkdownEditor extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text('Markdown', style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
+                Expanded(
+                  child: Text(
+                    chapterTitle == null ? 'Markdown' : 'Markdown · $chapterTitle',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 const Tooltip(
-                  message: 'Preview and PDF are rendered by the selected template.',
-                  child: Icon(Icons.extension_outlined, size: 19),
+                  message: 'Only this chapter is loaded into the editor.',
+                  child: Icon(Icons.speed_outlined, size: 19),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            MarkdownCommandToolbar(
-              controller: controller,
-              onChanged: onChanged,
-            ),
+            MarkdownCommandToolbar(controller: controller, onChanged: onChanged),
             const SizedBox(height: 12),
             Expanded(
               child: TextField(
@@ -475,7 +594,7 @@ final class _MarkdownEditor extends StatelessWidget {
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   alignLabelWithHint: true,
-                  hintText: 'Write Markdown here...',
+                  hintText: 'Write this chapter in Markdown...',
                 ),
                 style: const TextStyle(
                   fontFamily: 'monospace',
@@ -494,13 +613,15 @@ final class _MarkdownEditor extends StatelessWidget {
 final class _ChapterSidebar extends StatelessWidget {
   const _ChapterSidebar({
     required this.chapters,
+    required this.activeChapterId,
     required this.onAddChapter,
     required this.onSelectChapter,
   });
 
-  final List<BookChapter> chapters;
+  final List<BookChapterFile> chapters;
+  final String? activeChapterId;
   final VoidCallback onAddChapter;
-  final ValueChanged<int> onSelectChapter;
+  final ValueChanged<BookChapterFile> onSelectChapter;
 
   @override
   Widget build(BuildContext context) {
@@ -525,39 +646,78 @@ final class _ChapterSidebar extends StatelessWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: chapters.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'No chapter markers yet. Add a chapter to create a '
-                      '<!-- chapter: Title --> section.',
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: chapters.length,
-                    itemBuilder: (context, index) {
-                      final chapter = chapters[index];
-                      return ListTile(
-                        dense: true,
-                        leading: CircleAvatar(
-                          radius: 14,
-                          child: Text('${index + 1}'),
-                        ),
-                        title: Text(
-                          chapter.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          '${chapter.pageCount} '
-                          '${chapter.pageCount == 1 ? 'page' : 'pages'}',
-                        ),
-                        onTap: () => onSelectChapter(index),
-                      );
-                    },
+            child: ListView.builder(
+              itemCount: chapters.length,
+              itemBuilder: (context, index) {
+                final chapter = chapters[index];
+                return ListTile(
+                  dense: true,
+                  selected: chapter.id == activeChapterId,
+                  leading: CircleAvatar(
+                    radius: 14,
+                    child: Text('${index + 1}'),
                   ),
+                  title: Text(
+                    chapter.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(chapter.fileName),
+                  onTap: () => onSelectChapter(chapter),
+                );
+              },
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+final class _LargeChapterPreviewPaused extends StatelessWidget {
+  const _LargeChapterPreviewPaused({
+    required this.characters,
+    required this.onRefresh,
+  });
+
+  final int characters;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFFE8E3DB),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.pause_circle_outline, size: 42),
+                const SizedBox(height: 16),
+                Text(
+                  'Live preview paused for this large chapter',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$characters characters. Editing and autosave stay active; '
+                  'preview parsing is paused to keep the UI responsive.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Render preview once'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -586,8 +746,7 @@ final class _TemplatePreview extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${template.metadata.name} · '
-                    '${template.metadata.id} · '
+                    '${template.metadata.name} · current chapter · '
                     '${document.pages.length} pages',
                   ),
                 ),
@@ -598,370 +757,6 @@ final class _TemplatePreview extends StatelessWidget {
           Expanded(child: template.buildDocument(document)),
         ],
       ),
-    );
-  }
-}
-
-final class _BookSettingsDialog extends StatefulWidget {
-  const _BookSettingsDialog({required this.settings});
-
-  final BookSettings settings;
-
-  @override
-  State<_BookSettingsDialog> createState() => _BookSettingsDialogState();
-}
-
-final class _BookSettingsDialogState extends State<_BookSettingsDialog> {
-  late BookSettings _settings;
-
-  @override
-  void initState() {
-    super.initState();
-    _settings = widget.settings;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final descriptor = TemplateRegistry.descriptor(_settings.templateId);
-    final typography = _settings.typography;
-
-    return AlertDialog(
-      title: const Text('Book settings'),
-      content: SizedBox(
-        width: 560,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Document', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _settings.templateId,
-                decoration: const InputDecoration(labelText: 'Template'),
-                items: [
-                  for (final item in TemplateRegistry.available)
-                    DropdownMenuItem(
-                      value: item.template.metadata.id,
-                      child: Text(item.template.metadata.name),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  final nextDescriptor = TemplateRegistry.descriptor(value);
-                  final columns = nextDescriptor.supportedColumns.contains(
-                    _settings.defaultColumns,
-                  )
-                      ? _settings.defaultColumns
-                      : nextDescriptor.supportedColumns.first;
-                  setState(() {
-                    _settings = _settings.copyWith(
-                      templateId: value,
-                      defaultColumns: columns,
-                    );
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<BookPageSize>(
-                      initialValue: _settings.pageSize,
-                      decoration: const InputDecoration(labelText: 'Page size'),
-                      items: [
-                        for (final size in BookPageSize.values)
-                          DropdownMenuItem(
-                            value: size,
-                            child: Text(size.name.toUpperCase()),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _settings = _settings.copyWith(pageSize: value));
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<BookPageOrientation>(
-                      initialValue: _settings.orientation,
-                      decoration: const InputDecoration(labelText: 'Orientation'),
-                      items: [
-                        for (final orientation in BookPageOrientation.values)
-                          DropdownMenuItem(
-                            value: orientation,
-                            child: Text(orientation.name),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(
-                          () => _settings = _settings.copyWith(orientation: value),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<double>(
-                      initialValue: _settings.margin,
-                      decoration: const InputDecoration(labelText: 'Margin'),
-                      items: const [12, 24, 36, 48, 60]
-                          .map(
-                            (value) => DropdownMenuItem<double>(
-                              value: value.toDouble(),
-                              child: Text('$value pt'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _settings = _settings.copyWith(margin: value));
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<double>(
-                      initialValue: _settings.contentPadding,
-                      decoration: const InputDecoration(labelText: 'Content padding'),
-                      items: const [0, 12, 24, 36, 48]
-                          .map(
-                            (value) => DropdownMenuItem<double>(
-                              value: value.toDouble(),
-                              child: Text('$value pt'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(
-                          () => _settings = _settings.copyWith(contentPadding: value),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: _settings.defaultColumns,
-                decoration: const InputDecoration(labelText: 'Default columns'),
-                items: [
-                  for (final columns in descriptor.supportedColumns)
-                    DropdownMenuItem(
-                      value: columns,
-                      child: Text('$columns'),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(
-                    () => _settings = _settings.copyWith(defaultColumns: value),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              Text('Language', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _settings.languageCode,
-                      decoration: const InputDecoration(labelText: 'Book language'),
-                      items: const [
-                        DropdownMenuItem(value: 'en', child: Text('English')),
-                        DropdownMenuItem(value: 'ar', child: Text('Arabic')),
-                        DropdownMenuItem(value: 'fr', child: Text('French')),
-                        DropdownMenuItem(value: 'de', child: Text('German')),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        final defaultDirection = value == 'ar'
-                            ? BookDirection.rtl
-                            : BookDirection.ltr;
-                        setState(
-                          () => _settings = _settings.copyWith(
-                            languageCode: value,
-                            direction: defaultDirection,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<BookDirection>(
-                      initialValue: _settings.direction,
-                      decoration: const InputDecoration(labelText: 'Direction'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: BookDirection.ltr,
-                          child: Text('LTR'),
-                        ),
-                        DropdownMenuItem(
-                          value: BookDirection.rtl,
-                          child: Text('RTL'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(
-                          () => _settings = _settings.copyWith(direction: value),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text('Typography', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: typography.fontFamily ?? 'system',
-                decoration: const InputDecoration(labelText: 'Font family'),
-                items: const [
-                  DropdownMenuItem(value: 'system', child: Text('System default')),
-                  DropdownMenuItem(value: 'serif', child: Text('Serif')),
-                  DropdownMenuItem(value: 'sans-serif', child: Text('Sans serif')),
-                  DropdownMenuItem(value: 'monospace', child: Text('Monospace')),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _settings = _settings.copyWith(
-                      typography: typography.copyWith(
-                        fontFamily: value == 'system' ? null : value,
-                        clearFontFamily: value == 'system',
-                      ),
-                    );
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<double>(
-                      initialValue: typography.fontSize,
-                      decoration: const InputDecoration(labelText: 'Font size'),
-                      items: const [10, 11, 12, 14, 16, 18, 20]
-                          .map(
-                            (value) => DropdownMenuItem<double>(
-                              value: value.toDouble(),
-                              child: Text('$value pt'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            typography: typography.copyWith(fontSize: value),
-                          );
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
-                      initialValue: typography.fontWeight,
-                      decoration: const InputDecoration(labelText: 'Weight'),
-                      items: const [300, 400, 500, 600, 700]
-                          .map(
-                            (value) => DropdownMenuItem(
-                              value: value,
-                              child: Text('$value'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            typography: typography.copyWith(fontWeight: value),
-                          );
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<double>(
-                      initialValue: typography.lineHeight,
-                      decoration: const InputDecoration(labelText: 'Line height'),
-                      items: const [1.2, 1.4, 1.5, 1.6, 1.8, 2.0]
-                          .map(
-                            (value) => DropdownMenuItem(
-                              value: value,
-                              child: Text('$value'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            typography: typography.copyWith(lineHeight: value),
-                          );
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<BookTextAlignment>(
-                      initialValue: typography.alignment,
-                      decoration: const InputDecoration(labelText: 'Alignment'),
-                      items: [
-                        for (final alignment in BookTextAlignment.values)
-                          DropdownMenuItem(
-                            value: alignment,
-                            child: Text(alignment.name),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            typography: typography.copyWith(alignment: value),
-                          );
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Chapter opening pages use the template-specific '
-                '${descriptor.chapterLayouts.first} layout by default.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_settings),
-          child: const Text('Save'),
-        ),
-      ],
     );
   }
 }
