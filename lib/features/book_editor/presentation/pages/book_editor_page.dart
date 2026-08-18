@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:markweft_simple_book/features/book_editor/application/template_registry.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_settings_dialog.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';
+import 'package:markweft_simple_book/features/book_library/data/extensions/chapter_management_repository_extensions.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/book_chapter_file.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
@@ -56,9 +57,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   Completer<void>? _saveCompleter;
   SaveStatus _saveStatus = SaveStatus.loading;
 
-  BookTemplate get _template => TemplateRegistry.resolve(
-        _bookSettings.templateId,
-      );
+  BookTemplate get _template => TemplateRegistry.resolve(_bookSettings.templateId);
 
   BookDocument get _activeDocument => _template.parse(
         _previewMarkdown,
@@ -83,9 +82,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _loadBook() async {
     try {
-      final settings = await widget.projectRepository.loadBookSettings(
-        widget.project,
-      );
+      final settings = await widget.projectRepository.loadBookSettings(widget.project);
       var chapters = await widget.projectRepository.loadChapters(widget.project);
       if (chapters.isEmpty) {
         await widget.projectRepository.createChapter(
@@ -154,7 +151,6 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _queueSave(String markdown) {
     _pendingMarkdown = markdown;
-
     if (_saveInProgress) {
       return _saveCompleter?.future ?? Future<void>.value();
     }
@@ -170,7 +166,6 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       while (_pendingMarkdown != null) {
         final chapter = _activeChapter;
         if (chapter == null) break;
-
         final value = _pendingMarkdown!;
         _pendingMarkdown = null;
         await widget.projectRepository.saveChapterMarkdown(
@@ -267,39 +262,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   }
 
   Future<void> _addChapter() async {
-    final titleController = TextEditingController();
-    final title = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add chapter'),
-        content: TextField(
-          controller: titleController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Chapter title',
-            hintText: 'Chapter Two',
-          ),
-          onSubmitted: (value) {
-            final title = value.trim();
-            if (title.isNotEmpty) Navigator.of(context).pop(title);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isNotEmpty) Navigator.of(context).pop(title);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    titleController.dispose();
+    final title = await _askForChapterTitle(title: 'Add chapter');
     if (title == null || !mounted) return;
 
     await _saveNow(flushProject: false);
@@ -313,10 +276,117 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     await _selectChapter(chapter);
   }
 
-  Future<void> _showBookSettings() async {
-    final settings = await showDialog<BookSettings>(
+  Future<void> _renameChapter(BookChapterFile chapter) async {
+    final title = await _askForChapterTitle(
+      title: 'Rename chapter',
+      initialValue: chapter.title,
+    );
+    if (title == null || !mounted) return;
+
+    await _saveNow(flushProject: false);
+    final updated = await widget.projectRepository.renameChapter(
+      widget.project,
+      chapter,
+      title: title,
+    );
+    final chapters = await widget.projectRepository.loadChapters(widget.project);
+    if (!mounted) return;
+    setState(() {
+      _chapters = chapters;
+      if (_activeChapter?.id == chapter.id) _activeChapter = updated;
+    });
+  }
+
+  Future<void> _deleteChapter(BookChapterFile chapter) async {
+    if (_chapters.length <= 1) {
+      _showMessage('A book must contain at least one chapter.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => BookSettingsDialog(settings: _bookSettings),
+      builder: (context) => AlertDialog(
+        title: const Text('Delete chapter?'),
+        content: Text(
+          'Delete “${chapter.title}” and its Markdown file? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await _saveNow(flushProject: false);
+    final deletedActive = _activeChapter?.id == chapter.id;
+    await widget.projectRepository.deleteChapter(widget.project, chapter);
+    final chapters = await widget.projectRepository.loadChapters(widget.project);
+    if (!mounted) return;
+    setState(() => _chapters = chapters);
+    if (deletedActive && chapters.isNotEmpty) await _selectChapter(chapters.first);
+  }
+
+  Future<void> _moveChapter(BookChapterFile chapter, int direction) async {
+    final index = _chapters.indexWhere((item) => item.id == chapter.id);
+    final target = index + direction;
+    if (index < 0 || target < 0 || target >= _chapters.length) return;
+
+    final reordered = List<BookChapterFile>.of(_chapters);
+    final moved = reordered.removeAt(index);
+    reordered.insert(target, moved);
+    setState(() => _chapters = reordered);
+    await widget.projectRepository.reorderChapters(widget.project, reordered);
+  }
+
+  Future<String?> _askForChapterTitle({
+    required String title,
+    String? initialValue,
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Chapter title'),
+          onSubmitted: (value) {
+            final text = value.trim();
+            if (text.isNotEmpty) Navigator.of(context).pop(text);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) Navigator.of(context).pop(text);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _showBookSettings() async {
+    final settings = await Navigator.of(context).push<BookSettings>(
+      MaterialPageRoute(
+        builder: (_) => BookSettingsPage(settings: _bookSettings),
+      ),
     );
     if (settings == null || !mounted) return;
 
@@ -350,8 +420,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     if (_pdfInProgress) return;
 
     final location = await getSaveLocation(
-      suggestedName:
-          '${path.basenameWithoutExtension(widget.project.file.path)}.pdf',
+      suggestedName: '${path.basenameWithoutExtension(widget.project.file.path)}.pdf',
       acceptedTypeGroups: const <XTypeGroup>[_pdfType],
     );
     if (location == null) return;
@@ -369,17 +438,18 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       final document = _template.parse(markdown, settings: _bookSettings);
       final bytes = await _template.buildPdf(document).save();
       await File(location.path).writeAsBytes(bytes, flush: true);
-
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF exported to ${location.path}')),
-      );
+      _showMessage('PDF exported to ${location.path}');
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = 'Unable to export PDF: $error');
     } finally {
       if (mounted) setState(() => _pdfInProgress = false);
     }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _closeBook() async {
@@ -433,17 +503,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             onPressed: _saveStatus == SaveStatus.loading || _settingsInProgress
                 ? null
                 : _showBookSettings,
-            icon: _settingsInProgress
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.tune),
-          ),
-          IconButton(
-            tooltip: 'Add chapter',
-            onPressed: _saveStatus == SaveStatus.loading ? null : _addChapter,
-            icon: const Icon(Icons.library_add_outlined),
+            icon: const Icon(Icons.tune),
           ),
           IconButton(
             tooltip: 'Export PDF',
@@ -464,10 +524,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           ),
           Padding(
             padding: const EdgeInsets.only(right: 20),
-            child: _SaveStatusView(
-              status: _saveStatus,
-              path: widget.project.file.path,
-            ),
+            child: _SaveStatusView(status: _saveStatus, path: widget.project.file.path),
           ),
         ],
       ),
@@ -496,21 +553,23 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                               characters: _draftMarkdown.length,
                               onRefresh: _refreshLargeChapterPreview,
                             )
-                          : _TemplatePreview(
-                              template: _template,
-                              document: document!,
-                            );
-                      final chapters = _ChapterSidebar(
+                          : _TemplatePreview(template: _template, document: document!);
+                      final sections = _BookSectionsSidebar(
                         chapters: _chapters,
                         activeChapterId: _activeChapter?.id,
+                        onOpenSettings: _showBookSettings,
                         onAddChapter: _addChapter,
                         onSelectChapter: _selectChapter,
+                        onRenameChapter: _renameChapter,
+                        onDeleteChapter: _deleteChapter,
+                        onMoveChapterUp: (chapter) => _moveChapter(chapter, -1),
+                        onMoveChapterDown: (chapter) => _moveChapter(chapter, 1),
                       );
 
-                      if (constraints.maxWidth >= 1200) {
+                      if (constraints.maxWidth >= 1180) {
                         return Row(
                           children: [
-                            SizedBox(width: 250, child: chapters),
+                            SizedBox(width: 280, child: sections),
                             const VerticalDivider(width: 1),
                             Expanded(child: editor),
                             const VerticalDivider(width: 1),
@@ -561,7 +620,7 @@ final class _MarkdownEditor extends StatelessWidget {
     return ColoredBox(
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -580,9 +639,9 @@ final class _MarkdownEditor extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             MarkdownCommandToolbar(controller: controller, onChanged: onChanged),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Expanded(
               child: TextField(
                 controller: controller,
@@ -593,7 +652,6 @@ final class _MarkdownEditor extends StatelessWidget {
                 textAlignVertical: TextAlignVertical.top,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
                   hintText: 'Write this chapter in Markdown...',
                 ),
                 style: const TextStyle(
@@ -610,18 +668,28 @@ final class _MarkdownEditor extends StatelessWidget {
   }
 }
 
-final class _ChapterSidebar extends StatelessWidget {
-  const _ChapterSidebar({
+final class _BookSectionsSidebar extends StatelessWidget {
+  const _BookSectionsSidebar({
     required this.chapters,
     required this.activeChapterId,
+    required this.onOpenSettings,
     required this.onAddChapter,
     required this.onSelectChapter,
+    required this.onRenameChapter,
+    required this.onDeleteChapter,
+    required this.onMoveChapterUp,
+    required this.onMoveChapterDown,
   });
 
   final List<BookChapterFile> chapters;
   final String? activeChapterId;
+  final VoidCallback onOpenSettings;
   final VoidCallback onAddChapter;
   final ValueChanged<BookChapterFile> onSelectChapter;
+  final ValueChanged<BookChapterFile> onRenameChapter;
+  final ValueChanged<BookChapterFile> onDeleteChapter;
+  final ValueChanged<BookChapterFile> onMoveChapterUp;
+  final ValueChanged<BookChapterFile> onMoveChapterDown;
 
   @override
   Widget build(BuildContext context) {
@@ -631,11 +699,24 @@ final class _ChapterSidebar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text('Book', style: Theme.of(context).textTheme.titleMedium),
+          ),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.tune_outlined),
+            title: const Text('Book settings'),
+            subtitle: const Text('Page, language, typography'),
+            onTap: onOpenSettings,
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
             child: Row(
               children: [
-                Text('Chapters', style: Theme.of(context).textTheme.titleMedium),
-                const Spacer(),
+                Expanded(
+                  child: Text('Chapters', style: Theme.of(context).textTheme.titleMedium),
+                ),
                 IconButton(
                   tooltip: 'Add chapter',
                   onPressed: onAddChapter,
@@ -644,26 +725,62 @@ final class _ChapterSidebar extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1),
           Expanded(
-            child: ListView.builder(
+            child: ReorderableListView.builder(
+              buildDefaultDragHandles: false,
               itemCount: chapters.length,
+              onReorder: (oldIndex, newIndex) {
+                if (newIndex > oldIndex) newIndex--;
+                if (newIndex == oldIndex) return;
+                final chapter = chapters[oldIndex];
+                final direction = newIndex < oldIndex ? -1 : 1;
+                final steps = (newIndex - oldIndex).abs();
+                for (var i = 0; i < steps; i++) {
+                  direction < 0
+                      ? onMoveChapterUp(chapter)
+                      : onMoveChapterDown(chapter);
+                }
+              },
               itemBuilder: (context, index) {
                 final chapter = chapters[index];
                 return ListTile(
+                  key: ValueKey(chapter.id),
                   dense: true,
                   selected: chapter.id == activeChapterId,
-                  leading: CircleAvatar(
-                    radius: 14,
-                    child: Text('${index + 1}'),
+                  leading: ReorderableDragStartListener(
+                    index: index,
+                    child: const Icon(Icons.drag_indicator),
                   ),
                   title: Text(
                     chapter.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text(chapter.fileName),
+                  subtitle: Text('Chapter ${index + 1}'),
                   onTap: () => onSelectChapter(chapter),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'rename':
+                          onRenameChapter(chapter);
+                        case 'up':
+                          onMoveChapterUp(chapter);
+                        case 'down':
+                          onMoveChapterDown(chapter);
+                        case 'delete':
+                          onDeleteChapter(chapter);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                      if (index > 0)
+                        const PopupMenuItem(value: 'up', child: Text('Move up')),
+                      if (index < chapters.length - 1)
+                        const PopupMenuItem(value: 'down', child: Text('Move down')),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
                 );
               },
             ),
@@ -724,10 +841,7 @@ final class _LargeChapterPreviewPaused extends StatelessWidget {
 }
 
 final class _TemplatePreview extends StatelessWidget {
-  const _TemplatePreview({
-    required this.template,
-    required this.document,
-  });
+  const _TemplatePreview({required this.template, required this.document});
 
   final BookTemplate template;
   final BookDocument document;
@@ -739,7 +853,7 @@ final class _TemplatePreview extends StatelessWidget {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: Row(
               children: [
                 const Icon(Icons.auto_awesome_outlined, size: 18),
@@ -762,10 +876,7 @@ final class _TemplatePreview extends StatelessWidget {
 }
 
 final class _SaveStatusView extends StatelessWidget {
-  const _SaveStatusView({
-    required this.status,
-    required this.path,
-  });
+  const _SaveStatusView({required this.status, required this.path});
 
   final SaveStatus status;
   final String path;
