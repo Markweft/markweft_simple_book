@@ -16,6 +16,19 @@ final class MarkweftProject {
         '${Platform.pathSeparator}book.md',
       );
 
+  Directory get chaptersDirectory => Directory(
+        '${workspace.path}${Platform.pathSeparator}content'
+        '${Platform.pathSeparator}chapters',
+      );
+
+  File get chaptersIndexFile => File(
+        '${chaptersDirectory.path}${Platform.pathSeparator}index.json',
+      );
+
+  File chapterFile(String fileName) => File(
+        '${chaptersDirectory.path}${Platform.pathSeparator}$fileName',
+      );
+
   File get settingsFile => File(
         '${workspace.path}${Platform.pathSeparator}settings.json',
       );
