@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -67,11 +66,7 @@ final class RecentProjectsStore {
 
     for (final value in stored) {
       final entry = _decodeEntry(value);
-      if (entry == null) {
-        continue;
-      }
-
-      if (entry.bookmark != null || File(entry.path).existsSync()) {
+      if (entry != null) {
         entries.add(entry);
       }
     }
