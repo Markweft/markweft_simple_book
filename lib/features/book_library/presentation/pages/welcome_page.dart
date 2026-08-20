@@ -7,12 +7,15 @@ final class WelcomePage extends StatelessWidget {
     required this.isBusy,
     required this.errorMessage,
     required this.recentProjects,
+    required this.recentProjectVersions,
+    required this.currentMdwVersion,
     required this.showRecentBookPaths,
     required this.onOpenAppSettings,
     required this.onCreateBook,
     required this.onOpenBook,
     required this.onImportMarkdown,
     required this.onConvertBookVersion,
+    required this.onConvertRecent,
     required this.onOpenRecent,
     required this.onRemoveRecent,
     super.key,
@@ -21,12 +24,15 @@ final class WelcomePage extends StatelessWidget {
   final bool isBusy;
   final String? errorMessage;
   final List<String> recentProjects;
+  final Map<String, int?> recentProjectVersions;
+  final int currentMdwVersion;
   final bool showRecentBookPaths;
   final VoidCallback onOpenAppSettings;
   final VoidCallback onCreateBook;
   final VoidCallback onOpenBook;
   final VoidCallback onImportMarkdown;
   final VoidCallback onConvertBookVersion;
+  final ValueChanged<String> onConvertRecent;
   final ValueChanged<String> onOpenRecent;
   final ValueChanged<String> onRemoveRecent;
 
@@ -74,15 +80,17 @@ final class WelcomePage extends StatelessWidget {
                           _QuickActions(
                             onCreateBook: isBusy ? null : onCreateBook,
                             onOpenBook: isBusy ? null : onOpenBook,
-                            onImportMarkdown:
-                                isBusy ? null : onImportMarkdown,
+                            onImportMarkdown: isBusy ? null : onImportMarkdown,
                             onConvertBookVersion:
                                 isBusy ? null : onConvertBookVersion,
                           ),
                           const SizedBox(height: 34),
                           _RecentSection(
                             recentProjects: recentProjects,
+                            recentProjectVersions: recentProjectVersions,
+                            currentMdwVersion: currentMdwVersion,
                             showPaths: showRecentBookPaths,
+                            onConvertRecent: onConvertRecent,
                             onOpenRecent: onOpenRecent,
                             onRemoveRecent: onRemoveRecent,
                           ),
@@ -408,13 +416,19 @@ final class _ActionCard extends StatelessWidget {
 final class _RecentSection extends StatelessWidget {
   const _RecentSection({
     required this.recentProjects,
+    required this.recentProjectVersions,
+    required this.currentMdwVersion,
     required this.showPaths,
+    required this.onConvertRecent,
     required this.onOpenRecent,
     required this.onRemoveRecent,
   });
 
   final List<String> recentProjects;
+  final Map<String, int?> recentProjectVersions;
+  final int currentMdwVersion;
   final bool showPaths;
+  final ValueChanged<String> onConvertRecent;
   final ValueChanged<String> onOpenRecent;
   final ValueChanged<String> onRemoveRecent;
 
@@ -455,35 +469,14 @@ final class _RecentSection extends StatelessWidget {
             child: Column(
               children: [
                 for (var i = 0; i < recentProjects.length; i++) ...[
-                  ListTile(
-                    leading: const Icon(Icons.menu_book_outlined),
-                    title: Text(
-                      path.basenameWithoutExtension(recentProjects[i]),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: showPaths
-                        ? Text(
-                            recentProjects[i],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : null,
-                    onTap: () => onOpenRecent(recentProjects[i]),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: tr.welcome.recent.openTooltip,
-                          onPressed: () => onOpenRecent(recentProjects[i]),
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                        ),
-                        IconButton(
-                          tooltip: tr.welcome.recent.removeTooltip,
-                          onPressed: () => onRemoveRecent(recentProjects[i]),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
+                  _RecentBookTile(
+                    projectPath: recentProjects[i],
+                    version: recentProjectVersions[recentProjects[i]],
+                    currentMdwVersion: currentMdwVersion,
+                    showPath: showPaths,
+                    onConvert: () => onConvertRecent(recentProjects[i]),
+                    onOpen: () => onOpenRecent(recentProjects[i]),
+                    onRemove: () => onRemoveRecent(recentProjects[i]),
                   ),
                   if (i != recentProjects.length - 1) const Divider(height: 1),
                 ],
@@ -491,6 +484,97 @@ final class _RecentSection extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+final class _RecentBookTile extends StatelessWidget {
+  const _RecentBookTile({
+    required this.projectPath,
+    required this.version,
+    required this.currentMdwVersion,
+    required this.showPath,
+    required this.onConvert,
+    required this.onOpen,
+    required this.onRemove,
+  });
+
+  final String projectPath;
+  final int? version;
+  final int currentMdwVersion;
+  final bool showPath;
+  final VoidCallback onConvert;
+  final VoidCallback onOpen;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final isOld = version != null && version != currentMdwVersion;
+
+    return ListTile(
+      leading: const Icon(Icons.menu_book_outlined),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              path.basenameWithoutExtension(projectPath),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (version != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isOld
+                    ? scheme.tertiaryContainer
+                    : scheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${tr.welcome.recent.version(version: version!)} · '
+                '${isOld ? tr.welcome.recent.upgrade(version: currentMdwVersion) : tr.welcome.recent.current}',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            )
+          else
+            Text(
+              tr.welcome.recent.unknownVersion,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+        ],
+      ),
+      subtitle: showPath
+          ? Text(
+              projectPath,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            )
+          : null,
+      onTap: isOld ? onConvert : onOpen,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isOld)
+            FilledButton.tonalIcon(
+              onPressed: onConvert,
+              icon: const Icon(Icons.upgrade_rounded, size: 18),
+              label: Text(tr.welcome.recent.upgrade(version: currentMdwVersion)),
+            )
+          else
+            IconButton(
+              tooltip: tr.welcome.recent.openTooltip,
+              onPressed: onOpen,
+              icon: const Icon(Icons.arrow_forward_rounded),
+            ),
+          IconButton(
+            tooltip: tr.welcome.recent.removeTooltip,
+            onPressed: onRemove,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ],
+      ),
     );
   }
 }
