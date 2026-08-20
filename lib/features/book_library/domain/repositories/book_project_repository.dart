@@ -16,6 +16,7 @@ abstract interface class BookProjectRepository {
   Future<BookChapterFile> createChapter(
     MarkweftProject project, {
     required String title,
+    String? parentId,
   });
 
   Future<String> loadChapterMarkdown(
