@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:markweft_simple_book/core/settings/app_settings.dart';
+import 'package:markweft_simple_book/core/settings/app_settings_page.dart';
+import 'package:markweft_simple_book/core/settings/app_settings_store.dart';
 import 'package:markweft_simple_book/core/ui/dialogs/book_title_dialog.dart';
 import 'package:markweft_simple_book/core/ui/theme/markweft_theme.dart';
-import 'package:markweft_simple_book/core/ui/theme/theme_mode_store.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/pages/book_editor_page.dart';
 import 'package:markweft_simple_book/features/book_library/data/repositories/mdw_book_project_repository.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/macos_security_scoped_bookmark_service.dart';
@@ -25,13 +27,13 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
   final MacosSecurityScopedBookmarkService _bookmarkService =
       const MacosSecurityScopedBookmarkService();
-  final ThemeModeStore _themeModeStore = const ThemeModeStore();
+  final AppSettingsStore _appSettingsStore = const AppSettingsStore();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   MarkweftProject? _activeProject;
   String? _activeSecurityScopedPath;
   List<String> _recentProjects = const <String>[];
-  ThemeMode _themeMode = ThemeMode.system;
+  AppSettings _appSettings = const AppSettings();
   bool _isBusy = false;
   String? _errorMessage;
 
@@ -39,36 +41,37 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   void initState() {
     super.initState();
     _loadRecentProjects();
-    _loadThemeMode();
+    _loadAppSettings();
   }
 
-  Future<void> _loadThemeMode() async {
-    final mode = await _themeModeStore.load();
-    if (!mounted) {
-      return;
-    }
-
-    setState(() => _themeMode = mode);
+  Future<void> _loadAppSettings() async {
+    final settings = await _appSettingsStore.load();
+    if (!mounted) return;
+    setState(() => _appSettings = settings);
   }
 
-  Future<void> _setThemeMode(ThemeMode mode) async {
-    if (_themeMode == mode) {
-      return;
-    }
+  Future<void> _saveAppSettings(AppSettings settings) async {
+    setState(() => _appSettings = settings);
+    await _appSettingsStore.save(settings);
+  }
 
-    setState(() => _themeMode = mode);
-    await _themeModeStore.save(mode);
+  Future<void> _openAppSettings() async {
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+
+    final settings = await Navigator.of(context).push<AppSettings>(
+      MaterialPageRoute(
+        builder: (_) => AppSettingsPage(settings: _appSettings),
+      ),
+    );
+    if (settings == null || !mounted) return;
+    await _saveAppSettings(settings);
   }
 
   Future<void> _loadRecentProjects() async {
     final recentProjects = await _recentProjectsStore.load();
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _recentProjects = recentProjects;
-    });
+    if (!mounted) return;
+    setState(() => _recentProjects = recentProjects);
   }
 
   Future<void> _createProject() async {
@@ -76,10 +79,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       title: 'Create new book',
       actionLabel: 'Create',
     );
-    if (title == null) {
-      return;
-    }
-
+    if (title == null) return;
     await _runProjectAction(
       () => _projectRepository.createProject(title: title),
     );
@@ -90,10 +90,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       title: 'Import Markdown book',
       actionLabel: 'Import',
     );
-    if (title == null) {
-      return;
-    }
-
+    if (title == null) return;
     await _runProjectAction(
       () => _projectRepository.importMarkdown(title: title),
     );
@@ -123,9 +120,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         );
         return;
       } on Object catch (error) {
-        if (!mounted) {
-          return;
-        }
+        if (!mounted) return;
         setState(() {
           _errorMessage =
               'Unable to restore macOS permission for this book. '
@@ -148,52 +143,38 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
     try {
       final project = await action();
-      if (project == null || !mounted) {
-        return;
-      }
+      if (project == null || !mounted) return;
 
       String? bookmark;
       try {
         bookmark = await _bookmarkService.createBookmark(project.file.path);
       } on Object {
-        // The project itself is already open. Failure to persist the bookmark
-        // must not prevent editing; it only affects a future macOS relaunch.
+        // The project is already open. Bookmark failure only affects relaunch.
       }
 
       final recentProjects = await _recentProjectsStore.add(
         project.file.path,
         bookmark: bookmark,
       );
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _activeProject = project;
         _recentProjects = recentProjects;
       });
     } on Object catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Unable to open the book: $error';
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isBusy = false;
-        });
-      }
+      if (mounted) setState(() => _isBusy = false);
     }
   }
 
   Future<void> _closeProject() async {
     final project = _activeProject;
-    if (project == null) {
-      return;
-    }
+    if (project == null) return;
 
     await _projectRepository.closeProject(project);
 
@@ -203,10 +184,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       await _bookmarkService.stopAccessing(securityScopedPath);
     }
 
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     setState(() {
       _activeProject = null;
       _errorMessage = null;
@@ -216,13 +194,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
   Future<void> _removeRecentProject(String path) async {
     final updated = await _recentProjectsStore.remove(path);
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _recentProjects = updated;
-    });
+    if (!mounted) return;
+    setState(() => _recentProjects = updated);
   }
 
   Future<String?> _askForBookTitle({
@@ -230,19 +203,14 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     required String actionLabel,
   }) async {
     final dialogContext = _navigatorKey.currentContext;
-
-    if (dialogContext == null) {
-      return null;
-    }
+    if (dialogContext == null) return null;
 
     return showDialog<String>(
       context: dialogContext,
-      builder: (context) {
-        return BookTitleDialog(
-          title: title,
-          actionLabel: actionLabel,
-        );
-      },
+      builder: (context) => BookTitleDialog(
+        title: title,
+        actionLabel: actionLabel,
+      ),
     );
   }
 
@@ -254,7 +222,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       debugShowCheckedModeBanner: false,
       theme: MarkweftTheme.light(),
       darkTheme: MarkweftTheme.dark(),
-      themeMode: _themeMode,
+      themeMode: _appSettings.themeMode,
+      locale: _appSettings.locale,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       supportedLocales: const [
         Locale('en'),
@@ -265,8 +234,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
               isBusy: _isBusy,
               errorMessage: _errorMessage,
               recentProjects: _recentProjects,
-              themeMode: _themeMode,
-              onThemeModeChanged: _setThemeMode,
+              showRecentBookPaths: _appSettings.showRecentBookPaths,
+              onOpenAppSettings: _openAppSettings,
               onCreateBook: _createProject,
               onOpenBook: _pickProject,
               onImportMarkdown: _importMarkdown,
