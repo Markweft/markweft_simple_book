@@ -6,6 +6,8 @@ final class WelcomePage extends StatelessWidget {
     required this.isBusy,
     required this.errorMessage,
     required this.recentProjects,
+    required this.themeMode,
+    required this.onThemeModeChanged,
     required this.onCreateBook,
     required this.onOpenBook,
     required this.onImportMarkdown,
@@ -17,6 +19,8 @@ final class WelcomePage extends StatelessWidget {
   final bool isBusy;
   final String? errorMessage;
   final List<String> recentProjects;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
   final VoidCallback onCreateBook;
   final VoidCallback onOpenBook;
   final VoidCallback onImportMarkdown;
@@ -47,7 +51,10 @@ final class WelcomePage extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                const _TopBar(),
+                _TopBar(
+                  themeMode: themeMode,
+                  onThemeModeChanged: onThemeModeChanged,
+                ),
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
@@ -127,7 +134,13 @@ final class WelcomePage extends StatelessWidget {
 }
 
 final class _TopBar extends StatelessWidget {
-  const _TopBar();
+  const _TopBar({
+    required this.themeMode,
+    required this.onThemeModeChanged,
+  });
+
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -151,10 +164,7 @@ final class _TopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 11),
-          Text(
-            'Markweft',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Markweft', style: Theme.of(context).textTheme.titleLarge),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -182,6 +192,58 @@ final class _TopBar extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          PopupMenuButton<ThemeMode>(
+            tooltip: 'Appearance',
+            initialValue: themeMode,
+            onSelected: onThemeModeChanged,
+            icon: Icon(
+              switch (themeMode) {
+                ThemeMode.light => Icons.light_mode_outlined,
+                ThemeMode.dark => Icons.dark_mode_outlined,
+                ThemeMode.system => Icons.brightness_auto_outlined,
+              },
+            ),
+            itemBuilder: (context) => [
+              _themeMenuItem(
+                mode: ThemeMode.system,
+                current: themeMode,
+                icon: Icons.brightness_auto_outlined,
+                label: 'System',
+              ),
+              _themeMenuItem(
+                mode: ThemeMode.light,
+                current: themeMode,
+                icon: Icons.light_mode_outlined,
+                label: 'Light',
+              ),
+              _themeMenuItem(
+                mode: ThemeMode.dark,
+                current: themeMode,
+                icon: Icons.dark_mode_outlined,
+                label: 'Dark',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<ThemeMode> _themeMenuItem({
+    required ThemeMode mode,
+    required ThemeMode current,
+    required IconData icon,
+    required String label,
+  }) {
+    return PopupMenuItem<ThemeMode>(
+      value: mode,
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label)),
+          if (mode == current) const Icon(Icons.check_rounded, size: 18),
         ],
       ),
     );
@@ -318,60 +380,58 @@ final class _BookVisual extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     Widget page({required bool front}) {
-      return Expanded(
-        child: Container(
-          height: 178,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: scheme.outlineVariant),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.shadow.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 7),
+      return Container(
+        height: 178,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: scheme.outlineVariant),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadow.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 7),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: front ? 78 : 52,
+              height: 7,
+              decoration: BoxDecoration(
+                color: front ? scheme.primary : scheme.onSurfaceVariant,
+                borderRadius: BorderRadius.circular(4),
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: front ? 78 : 52,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: front ? scheme.primary : scheme.onSurfaceVariant,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(height: 11),
-              for (final width in [0.92, 0.78, 0.86, 0.68]) ...[
-                FractionallySizedBox(
-                  widthFactor: width,
-                  child: Container(
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: scheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
+            ),
+            const SizedBox(height: 11),
+            for (final width in [0.92, 0.78, 0.86, 0.68]) ...[
+              FractionallySizedBox(
+                widthFactor: width,
+                child: Container(
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: scheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
-                const SizedBox(height: 7),
-              ],
-              const Spacer(),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  front ? 'PDF' : 'EPUB',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
               ),
+              const SizedBox(height: 7),
             ],
-          ),
+            const Spacer(),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(
+                front ? 'PDF' : 'EPUB',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -379,10 +439,13 @@ final class _BookVisual extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        page(front: true),
-        Transform.translate(
-          offset: const Offset(-8, 12),
-          child: SizedBox(width: 122, child: page(front: false)),
+        Expanded(child: page(front: true)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Transform.translate(
+            offset: const Offset(0, 12),
+            child: page(front: false),
+          ),
         ),
       ],
     );
