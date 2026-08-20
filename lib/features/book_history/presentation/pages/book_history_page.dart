@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 import 'package:markweft_simple_book/features/book_history/data/services/book_history_service.dart';
 import 'package:markweft_simple_book/features/book_history/domain/entities/book_version.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
 
 final class BookHistoryPage extends StatefulWidget {
   const BookHistoryPage({
@@ -57,24 +57,24 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
     final message = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(tr.history.createVersion),
+        title: Text(tr.history.create.title),
         content: TextField(
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(
-            labelText: tr.history.description,
-            hintText: tr.history.descriptionHint,
+            labelText: tr.history.create.descriptionLabel,
+            hintText: tr.history.create.descriptionHint,
           ),
           onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(tr.app.cancel),
+            child: Text(tr.app.actions.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text(tr.dialogs.create),
+            child: Text(tr.dialogs.bookTitle.create.action),
           ),
         ],
       ),
@@ -87,7 +87,7 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
         project: widget.project,
         repository: widget.repository,
         reason: 'manual',
-        message: message.isEmpty ? tr.history.manualVersion : message,
+        message: message.isEmpty ? tr.history.create.manualVersion : message,
       );
       await widget.repository.flushProject(widget.project);
       await _load();
@@ -99,18 +99,18 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(tr.history.restoreQuestion),
+        title: Text(tr.history.restore.question),
         content: Text(
-          tr.history.restoreDescription(date: _formatDate(version.createdAt)),
+          tr.history.restore.description(date: _formatDate(version.createdAt)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(tr.app.cancel),
+            child: Text(tr.app.actions.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(tr.app.restore),
+            child: Text(tr.history.restore.action),
           ),
         ],
       ),
@@ -134,16 +134,16 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(tr.history.deleteManualQuestion),
-          content: Text(tr.history.deleteManualDescription),
+          title: Text(tr.history.delete.question),
+          content: Text(tr.history.delete.description),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text(tr.app.cancel),
+              child: Text(tr.app.actions.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text(tr.app.delete),
+              child: Text(tr.history.delete.action),
             ),
           ],
         ),
@@ -180,12 +180,12 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr.history.title),
+        title: Text(tr.history.page.title),
         actions: [
           FilledButton.icon(
             onPressed: _busy ? null : _createManualVersion,
             icon: const Icon(Icons.add),
-            label: Text(tr.history.createVersion),
+            label: Text(tr.history.create.title),
           ),
           const SizedBox(width: 16),
         ],
@@ -197,7 +197,10 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
               content: Text(_error!),
               leading: const Icon(Icons.error_outline),
               actions: [
-                TextButton(onPressed: _load, child: Text(tr.app.retry)),
+                TextButton(
+                  onPressed: _load,
+                  child: Text(tr.app.actions.retry),
+                ),
               ],
             ),
           Expanded(
@@ -208,7 +211,7 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
                         child: Padding(
                           padding: const EdgeInsets.all(24),
                           child: Text(
-                            tr.history.empty,
+                            tr.history.page.empty,
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -219,7 +222,7 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final version = _versions[index];
-                          final chapters = tr.history.chaptersCount(
+                          final chapters = tr.history.metadata.chapters(
                             count: version.chapters.length,
                           );
                           return ListTile(
@@ -234,7 +237,7 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
                                   : version.message,
                             ),
                             subtitle: Text(
-                              tr.history.metadata(
+                              tr.history.metadata.summary(
                                 date: _formatDate(version.createdAt),
                                 chapters: chapters,
                                 reason: _reasonLabel(version.reason, tr),
@@ -252,11 +255,11 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
                               itemBuilder: (_) => [
                                 PopupMenuItem(
                                   value: 'restore',
-                                  child: Text(tr.app.restore),
+                                  child: Text(tr.history.restore.action),
                                 ),
                                 PopupMenuItem(
                                   value: 'delete',
-                                  child: Text(tr.app.delete),
+                                  child: Text(tr.history.delete.action),
                                 ),
                               ],
                             ),
@@ -275,11 +278,11 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
   }
 
   String _reasonLabel(String reason, Translations tr) => switch (reason) {
-        'manual' => tr.history.manual,
-        'recovery' => tr.history.recovery,
-        'beforeDelete' => tr.history.beforeDelete,
-        'beforeRestore' => tr.history.beforeRestore,
-        'settingsChanged' => tr.history.settingsChanged,
+        'manual' => tr.history.reasons.manual,
+        'recovery' => tr.history.reasons.recovery,
+        'beforeDelete' => tr.history.reasons.beforeDelete,
+        'beforeRestore' => tr.history.reasons.beforeRestore,
+        'settingsChanged' => tr.history.reasons.settingsChanged,
         _ => reason,
       };
 }
