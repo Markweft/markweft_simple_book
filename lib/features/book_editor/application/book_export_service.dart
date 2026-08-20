@@ -22,6 +22,7 @@ final class BookExportService {
           id: chapter.id,
           title: chapter.title,
           markdown: await repository.loadChapterMarkdown(project, chapter),
+          parentId: chapter.parentId,
         ),
       );
     }
