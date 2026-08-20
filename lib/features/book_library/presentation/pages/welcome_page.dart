@@ -11,6 +11,7 @@ final class WelcomePage extends StatelessWidget {
     required this.onCreateBook,
     required this.onOpenBook,
     required this.onImportMarkdown,
+    required this.onConvertBookVersion,
     required this.onOpenRecent,
     required this.onRemoveRecent,
     super.key,
@@ -24,6 +25,7 @@ final class WelcomePage extends StatelessWidget {
   final VoidCallback onCreateBook;
   final VoidCallback onOpenBook;
   final VoidCallback onImportMarkdown;
+  final VoidCallback onConvertBookVersion;
   final ValueChanged<String> onOpenRecent;
   final ValueChanged<String> onRemoveRecent;
 
@@ -73,6 +75,8 @@ final class WelcomePage extends StatelessWidget {
                             onOpenBook: isBusy ? null : onOpenBook,
                             onImportMarkdown:
                                 isBusy ? null : onImportMarkdown,
+                            onConvertBookVersion:
+                                isBusy ? null : onConvertBookVersion,
                           ),
                           const SizedBox(height: 34),
                           _RecentSection(
@@ -272,18 +276,20 @@ final class _QuickActions extends StatelessWidget {
     required this.onCreateBook,
     required this.onOpenBook,
     required this.onImportMarkdown,
+    required this.onConvertBookVersion,
   });
 
   final VoidCallback? onCreateBook;
   final VoidCallback? onOpenBook;
   final VoidCallback? onImportMarkdown;
+  final VoidCallback? onConvertBookVersion;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900
-            ? 3
+        final columns = constraints.maxWidth >= 980
+            ? 4
             : constraints.maxWidth >= 620
                 ? 2
                 : 1;
@@ -315,6 +321,13 @@ final class _QuickActions extends StatelessWidget {
               title: 'Import Markdown',
               subtitle: 'Convert a Markdown manuscript into a book.',
               onTap: onImportMarkdown,
+            ),
+            _ActionCard(
+              width: width,
+              icon: Icons.swap_horiz_rounded,
+              title: 'Convert version',
+              subtitle: 'Create a compatible MDW v1 or v3 copy.',
+              onTap: onConvertBookVersion,
             ),
           ],
         );
