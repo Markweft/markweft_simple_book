@@ -1,0 +1,57 @@
+{
+  "page": {
+    "title": "Book settings"
+  },
+  "sections": {
+    "document": {
+      "title": "Document",
+      "template": "Template",
+      "pageSize": "Page size",
+      "orientation": "Orientation",
+      "orientationValues": {
+        "portrait": "Portrait",
+        "landscape": "Landscape"
+      },
+      "pageMargin": "Page margin",
+      "contentPadding": "Content padding",
+      "columns": {
+        "title": "Default columns",
+        "helper": "Available column counts are defined by the selected template."
+      }
+    },
+    "language": {
+      "title": "Language & direction",
+      "bookLanguage": "Book language",
+      "direction": "Direction",
+      "directionValues": {
+        "ltr": "Left to right (LTR)",
+        "rtl": "Right to left (RTL)"
+      }
+    },
+    "typography": {
+      "title": "Typography",
+      "fontFamily": "Font family",
+      "fontFamilies": {
+        "system": "System default",
+        "serif": "Serif",
+        "sansSerif": "Sans serif",
+        "monospace": "Monospace"
+      },
+      "fontSize": "Font size",
+      "fontWeight": "Weight",
+      "lineHeight": "Line height",
+      "alignment": "Alignment",
+      "alignmentValues": {
+        "start": "Start",
+        "left": "Left",
+        "center": "Center",
+        "right": "Right",
+        "justify": "Justify"
+      }
+    },
+    "templateBehavior": {
+      "title": "Template behavior",
+      "chapterOpeningLayout": "Chapter opening pages use the template-specific {layout} layout by default."
+    }
+  }
+}
