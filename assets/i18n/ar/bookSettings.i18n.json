@@ -1,0 +1,57 @@
+{
+  "page": {
+    "title": "إعدادات الكتاب"
+  },
+  "sections": {
+    "document": {
+      "title": "المستند",
+      "template": "القالب",
+      "pageSize": "حجم الصفحة",
+      "orientation": "الاتجاه",
+      "orientationValues": {
+        "portrait": "عمودي",
+        "landscape": "أفقي"
+      },
+      "pageMargin": "هامش الصفحة",
+      "contentPadding": "حشو المحتوى",
+      "columns": {
+        "title": "عدد الأعمدة الافتراضي",
+        "helper": "أعداد الأعمدة المتاحة يحددها القالب المختار."
+      }
+    },
+    "language": {
+      "title": "اللغة واتجاه النص",
+      "bookLanguage": "لغة الكتاب",
+      "direction": "اتجاه النص",
+      "directionValues": {
+        "ltr": "من اليسار إلى اليمين (LTR)",
+        "rtl": "من اليمين إلى اليسار (RTL)"
+      }
+    },
+    "typography": {
+      "title": "إعدادات الطباعة",
+      "fontFamily": "نوع الخط",
+      "fontFamilies": {
+        "system": "خط النظام الافتراضي",
+        "serif": "Serif",
+        "sansSerif": "Sans serif",
+        "monospace": "Monospace"
+      },
+      "fontSize": "حجم الخط",
+      "fontWeight": "سماكة الخط",
+      "lineHeight": "ارتفاع السطر",
+      "alignment": "المحاذاة",
+      "alignmentValues": {
+        "start": "البداية",
+        "left": "يسار",
+        "center": "وسط",
+        "right": "يمين",
+        "justify": "ضبط"
+      }
+    },
+    "templateBehavior": {
+      "title": "سلوك القالب",
+      "chapterOpeningLayout": "تستخدم صفحات افتتاح الفصل تخطيط القالب {layout} بشكل افتراضي."
+    }
+  }
+}
