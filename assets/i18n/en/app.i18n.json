@@ -24,5 +24,15 @@
       "light": "Light",
       "dark": "Dark"
     }
-  }
+  },
+
+  "save": "@:app.actions.save",
+  "cancel": "@:app.actions.cancel",
+  "delete": "@:app.actions.delete",
+  "restore": "@:app.actions.restore",
+  "retry": "@:app.actions.retry",
+  "loading": "@:app.status.loading",
+  "saving": "@:app.status.saving",
+  "saved": "@:app.status.saved",
+  "saveFailed": "@:app.status.saveFailed"
 }
