@@ -15,6 +15,7 @@ import 'package:markweft_simple_book/features/book_library/data/services/recent_
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
 import 'package:markweft_simple_book/features/book_library/presentation/pages/welcome_page.dart';
+import 'package:markweft_simple_book/i18n/strings.g.dart';
 
 final class MarkweftApp extends StatefulWidget {
   const MarkweftApp({super.key});
@@ -48,13 +49,25 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
   Future<void> _loadAppSettings() async {
     final settings = await _appSettingsStore.load();
+    await _applyLanguage(settings.languageCode);
     if (!mounted) return;
     setState(() => _appSettings = settings);
   }
 
   Future<void> _saveAppSettings(AppSettings settings) async {
+    await _applyLanguage(settings.languageCode);
+    if (!mounted) return;
     setState(() => _appSettings = settings);
     await _appSettingsStore.save(settings);
+  }
+
+  Future<void> _applyLanguage(String languageCode) async {
+    if (languageCode == 'system') {
+      LocaleSettings.useDeviceLocale();
+      return;
+    }
+
+    await LocaleSettings.setLocaleRaw(languageCode);
   }
 
   Future<void> _openAppSettings() async {
@@ -78,8 +91,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
   Future<void> _createProject() async {
     final title = await _askForBookTitle(
-      title: 'Create new book',
-      actionLabel: 'Create',
+      title: t.dialogs.createNewBook,
+      actionLabel: t.dialogs.create,
     );
     if (title == null) return;
     await _runProjectAction(
@@ -89,8 +102,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
   Future<void> _importMarkdown() async {
     final title = await _askForBookTitle(
-      title: 'Import Markdown book',
-      actionLabel: 'Import',
+      title: t.dialogs.importMarkdownBook,
+      actionLabel: t.dialogs.import,
     );
     if (title == null) return;
     await _runProjectAction(
@@ -102,27 +115,24 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     final context = _navigatorKey.currentContext;
     if (context == null) return;
 
+    final tr = Translations.of(context);
     final targetVersion = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Convert book version'),
-        content: const Text(
-          'A new .mdw copy will be created. The source book is never modified. '
-          'Version 1 is the original single-Markdown format. Version 3 is the '
-          'current chapter-based format.',
-        ),
+        title: Text(tr.welcome.convertDialogTitle),
+        content: Text(tr.welcome.convertDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(tr.app.cancel),
           ),
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(1),
-            child: const Text('Convert to v1'),
+            child: Text(tr.welcome.convertToV1),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(3),
-            child: const Text('Convert to v3'),
+            child: Text(tr.welcome.convertToV3),
           ),
         ],
       ),
@@ -141,12 +151,12 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       if (output == null || !mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Converted book saved to $output')),
+        SnackBar(content: Text(t.welcome.convertedSaved(path: output))),
       );
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Unable to convert the book: $error';
+        _errorMessage = t.welcome.convertFailed(error: '$error');
       });
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -161,11 +171,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     if (Platform.isMacOS) {
       final bookmark = await _recentProjectsStore.bookmarkFor(path);
       if (bookmark == null) {
-        setState(() {
-          _errorMessage =
-              'This recent book was saved by an older Markweft version. '
-              'Use Open book once and select it again so macOS can save persistent access.';
-        });
+        setState(() => _errorMessage = t.welcome.oldBookmark);
         return;
       }
 
@@ -179,9 +185,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       } on Object catch (error) {
         if (!mounted) return;
         setState(() {
-          _errorMessage =
-              'Unable to restore macOS permission for this book. '
-              'Open it once with Open book to refresh access. ($error)';
+          _errorMessage = t.welcome.bookmarkRestoreFailed(error: '$error');
         });
         return;
       }
@@ -222,7 +226,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Unable to open the book: $error';
+        _errorMessage = t.welcome.openFailed(error: '$error');
       });
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -280,12 +284,9 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       theme: MarkweftTheme.light(),
       darkTheme: MarkweftTheme.dark(),
       themeMode: _appSettings.themeMode,
-      locale: _appSettings.locale,
+      locale: TranslationProvider.of(context).flutterLocale,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      supportedLocales: const [
-        Locale('en'),
-        Locale('ar'),
-      ],
+      supportedLocales: AppLocaleUtils.supportedLocales,
       home: _activeProject == null
           ? WelcomePage(
               isBusy: _isBusy,

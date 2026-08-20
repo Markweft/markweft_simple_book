@@ -15,6 +15,7 @@ import 'package:markweft_simple_book/features/book_library/data/extensions/chapt
 import 'package:markweft_simple_book/features/book_library/domain/entities/book_chapter_file.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
+import 'package:markweft_simple_book/i18n/strings.g.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 import 'package:path/path.dart' as path;
 
@@ -40,15 +41,6 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   static const int _livePreviewCharacterLimit = 350000;
   static const BookExportService _exportService = BookExportService();
   static const BookHistoryService _historyService = BookHistoryService();
-
-  static const XTypeGroup _pdfType = XTypeGroup(
-    label: 'PDF document',
-    extensions: <String>['pdf'],
-  );
-  static const XTypeGroup _epubType = XTypeGroup(
-    label: 'EPUB book',
-    extensions: <String>['epub'],
-  );
 
   late final TextEditingController _controller;
   Timer? _saveDebounce;
@@ -100,7 +92,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       if (chapters.isEmpty) {
         await widget.projectRepository.createChapter(
           widget.project,
-          title: 'Chapter One',
+          title: t.editor.chapterOne,
         );
         chapters = await widget.projectRepository.loadChapters(widget.project);
       }
@@ -128,7 +120,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       if (!mounted) return;
       setState(() {
         _saveStatus = SaveStatus.failed;
-        _errorMessage = 'Unable to load this book: $error';
+        _errorMessage = t.editor.loadBookFailed(error: '$error');
       });
     }
   }
@@ -196,7 +188,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         project: widget.project,
         repository: widget.projectRepository,
         reason: 'recovery',
-        message: 'Automatic recovery checkpoint',
+        message: t.editor.automaticRecoveryCheckpoint,
         enforceRecoveryInterval: true,
       );
       unawaited(
@@ -214,7 +206,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       if (mounted) {
         setState(() {
           _saveStatus = SaveStatus.failed;
-          _errorMessage = 'Unable to save this chapter: $error';
+          _errorMessage = t.editor.saveChapterFailed(error: '$error');
         });
       }
     } finally {
@@ -239,7 +231,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       if (!mounted) return;
       setState(() {
         _saveStatus = SaveStatus.failed;
-        _errorMessage = 'Chapter saved locally, but .mdw update failed: $error';
+        _errorMessage = t.editor.mdwFlushFailed(error: '$error');
       });
     }
   }
@@ -288,13 +280,13 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       if (!mounted) return;
       setState(() {
         _saveStatus = SaveStatus.failed;
-        _errorMessage = 'Unable to open chapter: $error';
+        _errorMessage = t.editor.openChapterFailed(error: '$error');
       });
     }
   }
 
   Future<void> _addChapter() async {
-    final title = await _askForChapterTitle(title: 'Add chapter');
+    final title = await _askForChapterTitle(title: t.editor.addChapter);
     if (title == null || !mounted) return;
 
     await _saveNow(flushProject: false);
@@ -310,7 +302,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _renameChapter(BookChapterFile chapter) async {
     final title = await _askForChapterTitle(
-      title: 'Rename chapter',
+      title: t.editor.renameChapter,
       initialValue: chapter.title,
     );
     if (title == null || !mounted) return;
@@ -330,27 +322,27 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   }
 
   Future<void> _deleteChapter(BookChapterFile chapter) async {
+    final tr = Translations.of(context);
     if (_chapters.length <= 1) {
-      _showMessage('A book must contain at least one chapter.');
+      _showMessage(tr.editor.atLeastOneChapter);
       return;
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete chapter?'),
+        title: Text(tr.editor.deleteChapterQuestion),
         content: Text(
-          'Delete “${chapter.title}” and its Markdown file? '
-          'A history checkpoint will be created first.',
+          tr.editor.deleteChapterDescription(title: chapter.title),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(tr.app.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(tr.app.delete),
           ),
         ],
       ),
@@ -362,7 +354,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       project: widget.project,
       repository: widget.projectRepository,
       reason: 'beforeDelete',
-      message: 'Before deleting ${chapter.title}',
+      message: tr.editor.beforeDeleting(title: chapter.title),
     );
 
     final deletedActive = _activeChapter?.id == chapter.id;
@@ -405,6 +397,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     String? initialValue,
   }) async {
     final controller = TextEditingController(text: initialValue);
+    final tr = Translations.of(context);
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -412,7 +405,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Chapter title'),
+          decoration: InputDecoration(labelText: tr.dialogs.chapterTitle),
           onSubmitted: (value) {
             final text = value.trim();
             if (text.isNotEmpty) Navigator.of(context).pop(text);
@@ -421,14 +414,14 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(tr.app.cancel),
           ),
           FilledButton(
             onPressed: () {
               final text = controller.text.trim();
               if (text.isNotEmpty) Navigator.of(context).pop(text);
             },
-            child: const Text('Save'),
+            child: Text(tr.app.save),
           ),
         ],
       ),
@@ -450,7 +443,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       project: widget.project,
       repository: widget.projectRepository,
       reason: 'settingsChanged',
-      message: 'Before changing book settings',
+      message: t.editor.beforeChangingSettings,
     );
 
     setState(() {
@@ -466,7 +459,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       }
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Unable to save book settings: $error');
+      setState(() => _errorMessage = t.editor.saveSettingsFailed(error: '$error'));
     } finally {
       if (mounted) setState(() => _settingsInProgress = false);
     }
@@ -502,10 +495,14 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     if (_exportInProgress) return;
 
     final baseName = path.basenameWithoutExtension(widget.project.file.path);
-    final (extension, typeGroup) = switch (format) {
-      BookOutputFormat.pdf => ('pdf', _pdfType),
-      BookOutputFormat.epub => ('epub', _epubType),
+    final extension = switch (format) {
+      BookOutputFormat.pdf => 'pdf',
+      BookOutputFormat.epub => 'epub',
     };
+    final typeGroup = XTypeGroup(
+      label: format == BookOutputFormat.pdf ? t.editor.pdf : t.editor.epub,
+      extensions: <String>[extension],
+    );
 
     final location = await getSaveLocation(
       suggestedName: '$baseName.$extension',
@@ -542,11 +539,18 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       }
 
       if (!mounted) return;
-      _showMessage('${format.name.toUpperCase()} exported to ${location.path}');
+      final formatLabel = format == BookOutputFormat.pdf ? t.editor.pdf : t.editor.epub;
+      _showMessage(
+        t.editor.exported(format: formatLabel, path: location.path),
+      );
     } on Object catch (error) {
       if (!mounted) return;
+      final formatLabel = format == BookOutputFormat.pdf ? t.editor.pdf : t.editor.epub;
       setState(() {
-        _errorMessage = 'Unable to export ${format.name.toUpperCase()}: $error';
+        _errorMessage = t.editor.exportFailed(
+          format: formatLabel,
+          error: '$error',
+        );
       });
     } finally {
       if (mounted) setState(() => _exportInProgress = false);
@@ -570,6 +574,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
     final activeIndex = _chapters.indexWhere(
       (chapter) => chapter.id == _activeChapter?.id,
     );
@@ -577,7 +582,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Close book',
+          tooltip: tr.editor.closeBook,
           onPressed: _saveStatus == SaveStatus.loading ? null : _closeBook,
           icon: const Icon(Icons.arrow_back),
         ),
@@ -586,7 +591,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           children: [
             Text(widget.project.title),
             Text(
-              '${_activeChapter?.title ?? 'Loading chapter'} · '
+              '${_activeChapter?.title ?? tr.editor.loadingChapter} · '
               '${_template.metadata.name} v${_template.metadata.version}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -597,22 +602,27 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         actions: [
           if (activeIndex >= 0)
             Center(
-              child: Text('Chapter ${activeIndex + 1}/${_chapters.length}'),
+              child: Text(
+                tr.editor.chapterIndex(
+                  current: activeIndex + 1,
+                  total: _chapters.length,
+                ),
+              ),
             ),
           const SizedBox(width: 12),
           Center(
             child: SegmentedButton<BookWorkspaceMode>(
               showSelectedIcon: false,
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: BookWorkspaceMode.edit,
-                  icon: Icon(Icons.edit_outlined),
-                  label: Text('Edit'),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(tr.editor.edit),
                 ),
                 ButtonSegment(
                   value: BookWorkspaceMode.preview,
-                  icon: Icon(Icons.visibility_outlined),
-                  label: Text('Preview'),
+                  icon: const Icon(Icons.visibility_outlined),
+                  label: Text(tr.editor.preview),
                 ),
               ],
               selected: {_workspaceMode},
@@ -623,19 +633,19 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           ),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: 'Version history',
+            tooltip: tr.editor.versionHistory,
             onPressed: _saveStatus == SaveStatus.loading ? null : _openHistory,
             icon: const Icon(Icons.history),
           ),
           IconButton(
-            tooltip: 'Book settings',
+            tooltip: tr.editor.bookSettings,
             onPressed: _saveStatus == SaveStatus.loading || _settingsInProgress
                 ? null
                 : _showBookSettings,
             icon: const Icon(Icons.tune),
           ),
           PopupMenuButton<BookOutputFormat>(
-            tooltip: 'Export book',
+            tooltip: tr.editor.exportBook,
             enabled: _saveStatus != SaveStatus.loading && !_exportInProgress,
             onSelected: (format) => unawaited(_exportBook(format)),
             icon: _exportInProgress
@@ -644,30 +654,30 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.ios_share_outlined),
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: BookOutputFormat.pdf,
                 child: ListTile(
-                  leading: Icon(Icons.picture_as_pdf_outlined),
-                  title: Text('Export PDF'),
+                  leading: const Icon(Icons.picture_as_pdf_outlined),
+                  title: Text(tr.editor.exportPdf),
                 ),
               ),
               PopupMenuItem(
                 value: BookOutputFormat.epub,
                 child: ListTile(
-                  leading: Icon(Icons.menu_book_outlined),
-                  title: Text('Export EPUB'),
+                  leading: const Icon(Icons.menu_book_outlined),
+                  title: Text(tr.editor.exportEpub),
                 ),
               ),
             ],
           ),
           IconButton(
-            tooltip: 'Save now',
+            tooltip: tr.editor.saveNow,
             onPressed: _saveStatus == SaveStatus.loading ? null : _saveNow,
             icon: const Icon(Icons.save_outlined),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 20),
+            padding: const EdgeInsetsDirectional.only(end: 20),
             child: _SaveStatusView(
               status: _saveStatus,
               path: widget.project.file.path,
@@ -682,7 +692,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
               content: Text(_errorMessage!),
               leading: const Icon(Icons.error_outline),
               actions: [
-                TextButton(onPressed: _saveNow, child: const Text('Retry')),
+                TextButton(onPressed: _saveNow, child: Text(tr.app.retry)),
               ],
             ),
           Expanded(
@@ -789,6 +799,8 @@ final class _MarkdownEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return ColoredBox(
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
@@ -800,14 +812,16 @@ final class _MarkdownEditor extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    chapterTitle == null ? 'Markdown' : 'Markdown · $chapterTitle',
+                    chapterTitle == null
+                        ? tr.editor.markdown
+                        : tr.editor.markdownChapter(title: chapterTitle!),
                     style: Theme.of(context).textTheme.titleLarge,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Tooltip(
-                  message: 'Only this chapter is loaded into the editor.',
-                  child: Icon(Icons.speed_outlined, size: 19),
+                Tooltip(
+                  message: tr.editor.chapterOnlyLoaded,
+                  child: const Icon(Icons.speed_outlined, size: 19),
                 ),
               ],
             ),
@@ -825,9 +839,9 @@ final class _MarkdownEditor extends StatelessWidget {
                 maxLines: null,
                 minLines: null,
                 textAlignVertical: TextAlignVertical.top,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Write this chapter in Markdown...',
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: tr.editor.writeChapterHint,
                 ),
                 style: const TextStyle(
                   fontFamily: 'monospace',
@@ -872,6 +886,8 @@ final class _BookSectionsSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Column(
@@ -879,35 +895,35 @@ final class _BookSectionsSidebar extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('Book', style: Theme.of(context).textTheme.titleMedium),
+            child: Text(tr.editor.book, style: Theme.of(context).textTheme.titleMedium),
           ),
           ListTile(
             dense: true,
             leading: const Icon(Icons.tune_outlined),
-            title: const Text('Book settings'),
-            subtitle: const Text('Page, language, typography'),
+            title: Text(tr.editor.bookSettings),
+            subtitle: Text(tr.editor.bookSettingsSubtitle),
             onTap: onOpenSettings,
           ),
           ListTile(
             dense: true,
             leading: const Icon(Icons.history),
-            title: const Text('Version history'),
-            subtitle: const Text('Recovery, checkpoints, restore'),
+            title: Text(tr.editor.versionHistory),
+            subtitle: Text(tr.editor.versionHistorySubtitle),
             onTap: onOpenHistory,
           ),
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 8, 8),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
-                    'Chapters',
+                    tr.editor.chapters,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Add chapter',
+                  tooltip: tr.editor.addChapter,
                   onPressed: onAddChapter,
                   icon: const Icon(Icons.add),
                 ),
@@ -936,7 +952,7 @@ final class _BookSectionsSidebar extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text('Chapter ${index + 1}'),
+                  subtitle: Text(tr.editor.chapterNumber(number: index + 1)),
                   onTap: () => onSelectChapter(chapter),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
@@ -951,24 +967,24 @@ final class _BookSectionsSidebar extends StatelessWidget {
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'rename',
-                        child: Text('Rename'),
+                        child: Text(tr.editor.rename),
                       ),
                       if (index > 0)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'up',
-                          child: Text('Move up'),
+                          child: Text(tr.editor.moveUp),
                         ),
                       if (index < chapters.length - 1)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'down',
-                          child: Text('Move down'),
+                          child: Text(tr.editor.moveDown),
                         ),
                       const PopupMenuDivider(),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'delete',
-                        child: Text('Delete'),
+                        child: Text(tr.app.delete),
                       ),
                     ],
                   ),
@@ -993,8 +1009,10 @@ final class _LargeChapterPreviewPaused extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return ColoredBox(
-      color: const Color(0xFFE8E3DB),
+      color: Theme.of(context).colorScheme.surfaceContainer,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -1006,21 +1024,21 @@ final class _LargeChapterPreviewPaused extends StatelessWidget {
                 const Icon(Icons.pause_circle_outline, size: 42),
                 const SizedBox(height: 16),
                 Text(
-                  'Live preview paused for this large chapter',
+                  tr.editor.largePreviewPaused,
                   style: Theme.of(context).textTheme.titleMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '$characters characters. Editing and autosave stay active; '
-                  'preview parsing is paused to keep the UI responsive.',
+                  '${tr.editor.characters(count: characters)}. '
+                  '${tr.editor.previewPausedDetails}',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: onRefresh,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Render preview once'),
+                  label: Text(tr.editor.renderOnce),
                 ),
               ],
             ),
@@ -1042,11 +1060,12 @@ final class _SaveStatusView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
     final (icon, label) = switch (status) {
-      SaveStatus.loading => (Icons.hourglass_empty, 'Loading'),
-      SaveStatus.saving => (Icons.sync, 'Saving...'),
-      SaveStatus.saved => (Icons.check_circle_outline, 'Saved'),
-      SaveStatus.failed => (Icons.error_outline, 'Save failed'),
+      SaveStatus.loading => (Icons.hourglass_empty, tr.app.loading),
+      SaveStatus.saving => (Icons.sync, tr.app.saving),
+      SaveStatus.saved => (Icons.check_circle_outline, tr.app.saved),
+      SaveStatus.failed => (Icons.error_outline, tr.app.saveFailed),
     };
 
     return Tooltip(
