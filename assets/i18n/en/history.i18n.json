@@ -1,0 +1,33 @@
+{
+  "page": {
+    "title": "Version history",
+    "empty": "No versions yet. Create a manual version or keep editing; recovery checkpoints are created automatically."
+  },
+  "create": {
+    "title": "Create version",
+    "descriptionLabel": "Description",
+    "descriptionHint": "Before rewriting chapter 4",
+    "manualVersion": "Manual version"
+  },
+  "reasons": {
+    "manual": "Manual",
+    "recovery": "Recovery",
+    "beforeDelete": "Before delete",
+    "beforeRestore": "Before restore",
+    "settingsChanged": "Settings changed"
+  },
+  "restore": {
+    "question": "Restore this version?",
+    "description": "The current book state will be saved automatically before restoring {date}.",
+    "action": "Restore"
+  },
+  "delete": {
+    "question": "Delete manual version?",
+    "description": "This removes the checkpoint from the history list.",
+    "action": "Delete"
+  },
+  "metadata": {
+    "chapters": "{count} chapters",
+    "summary": "{date} · {chapters} · {reason}"
+  }
+}
