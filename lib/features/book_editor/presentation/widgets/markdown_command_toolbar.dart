@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:markweft_simple_book/core/i18n/translations.g.dart';
+import 'package:markweft_template_simple/markweft_template_simple.dart';
 
 final class MarkdownCommandToolbar extends StatelessWidget {
   const MarkdownCommandToolbar({
     required this.controller,
     required this.onChanged,
+    required this.actions,
     super.key,
   });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final Set<TemplateToolbarAction> actions;
+
+  bool _supports(TemplateToolbarAction action) => actions.contains(action);
 
   void _insert(String text, {int? cursorOffset}) {
     final value = controller.value;
@@ -60,91 +65,102 @@ final class MarkdownCommandToolbar extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _CommandButton(
-            tooltip: tr.toolbar.headings.h1,
-            label: 'H1',
-            onPressed: () => _insert(
-              '\n# ${tr.toolbar.headings.placeholder}\n',
-              cursorOffset: 3,
+          if (_supports(TemplateToolbarAction.heading1))
+            _CommandButton(
+              tooltip: tr.toolbar.headings.h1,
+              label: 'H1',
+              onPressed: () => _insert(
+                '\n# ${tr.toolbar.headings.placeholder}\n',
+                cursorOffset: 3,
+              ),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.headings.h2,
-            label: 'H2',
-            onPressed: () => _insert(
-              '\n## ${tr.toolbar.headings.placeholder}\n',
-              cursorOffset: 4,
+          if (_supports(TemplateToolbarAction.heading2))
+            _CommandButton(
+              tooltip: tr.toolbar.headings.h2,
+              label: 'H2',
+              onPressed: () => _insert(
+                '\n## ${tr.toolbar.headings.placeholder}\n',
+                cursorOffset: 4,
+              ),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.formatting.bold,
-            icon: Icons.format_bold,
-            onPressed: () => _wrapSelection(
-              '**',
-              '**',
-              tr.toolbar.placeholders.boldText,
+          if (_supports(TemplateToolbarAction.bold))
+            _CommandButton(
+              tooltip: tr.toolbar.formatting.bold,
+              icon: Icons.format_bold,
+              onPressed: () => _wrapSelection(
+                '**',
+                '**',
+                tr.toolbar.placeholders.boldText,
+              ),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.formatting.italic,
-            icon: Icons.format_italic,
-            onPressed: () => _wrapSelection(
-              '*',
-              '*',
-              tr.toolbar.placeholders.italicText,
+          if (_supports(TemplateToolbarAction.italic))
+            _CommandButton(
+              tooltip: tr.toolbar.formatting.italic,
+              icon: Icons.format_italic,
+              onPressed: () => _wrapSelection(
+                '*',
+                '*',
+                tr.toolbar.placeholders.italicText,
+              ),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.lists.bullet,
-            icon: Icons.format_list_bulleted,
-            onPressed: () => _insert(
-              '\n- ${tr.toolbar.lists.itemOne}\n- ${tr.toolbar.lists.itemTwo}\n',
+          if (_supports(TemplateToolbarAction.bulletList))
+            _CommandButton(
+              tooltip: tr.toolbar.lists.bullet,
+              icon: Icons.format_list_bulleted,
+              onPressed: () => _insert(
+                '\n- ${tr.toolbar.lists.itemOne}\n- ${tr.toolbar.lists.itemTwo}\n',
+              ),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.lists.numbered,
-            icon: Icons.format_list_numbered,
-            onPressed: () => _insert(
-              '\n1. ${tr.toolbar.lists.firstItem}\n2. ${tr.toolbar.lists.secondItem}\n',
+          if (_supports(TemplateToolbarAction.numberedList))
+            _CommandButton(
+              tooltip: tr.toolbar.lists.numbered,
+              icon: Icons.format_list_numbered,
+              onPressed: () => _insert(
+                '\n1. ${tr.toolbar.lists.firstItem}\n2. ${tr.toolbar.lists.secondItem}\n',
+              ),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.formatting.quote,
-            icon: Icons.format_quote,
-            onPressed: () =>
-                _insert('\n> ${tr.toolbar.placeholders.quoteText}\n'),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.insert.link,
-            icon: Icons.link,
-            onPressed: () => _insert(
-              '[${tr.toolbar.placeholders.linkText}](https://example.com)',
-              cursorOffset: 1,
+          if (_supports(TemplateToolbarAction.quote))
+            _CommandButton(
+              tooltip: tr.toolbar.formatting.quote,
+              icon: Icons.format_quote,
+              onPressed: () =>
+                  _insert('\n> ${tr.toolbar.placeholders.quoteText}\n'),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.insert.image,
-            icon: Icons.image_outlined,
-            onPressed: () => _insert(
-              '![${tr.toolbar.placeholders.imageDescription}](assets/images/image.png)',
-              cursorOffset: 2,
+          if (_supports(TemplateToolbarAction.link))
+            _CommandButton(
+              tooltip: tr.toolbar.insert.link,
+              icon: Icons.link,
+              onPressed: () => _insert(
+                '[${tr.toolbar.placeholders.linkText}](https://example.com)',
+                cursorOffset: 1,
+              ),
             ),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.insert.table,
-            icon: Icons.table_chart_outlined,
-            onPressed: () => _insert('''
+          if (_supports(TemplateToolbarAction.image))
+            _CommandButton(
+              tooltip: tr.toolbar.insert.image,
+              icon: Icons.image_outlined,
+              onPressed: () => _insert(
+                '![${tr.toolbar.placeholders.imageDescription}](assets/images/image.png)',
+                cursorOffset: 2,
+              ),
+            ),
+          if (_supports(TemplateToolbarAction.table))
+            _CommandButton(
+              tooltip: tr.toolbar.insert.table,
+              icon: Icons.table_chart_outlined,
+              onPressed: () => _insert('''
 
 | Column 1 | Column 2 | Column 3 |
 |---|---|---|
 | Value 1 | Value 2 | Value 3 |
 | Value 4 | Value 5 | Value 6 |
 '''),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.formatting.codeBlock,
-            icon: Icons.code,
-            onPressed: () => _insert('''
+            ),
+          if (_supports(TemplateToolbarAction.codeBlock))
+            _CommandButton(
+              tooltip: tr.toolbar.formatting.codeBlock,
+              icon: Icons.code,
+              onPressed: () => _insert('''
 
 ```dart
 void main() {
@@ -152,21 +168,24 @@ void main() {
 }
 ```
 '''),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.formatting.divider,
-            icon: Icons.horizontal_rule,
-            onPressed: () => _insert('\n\n---\n\n'),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.insert.newPage,
-            icon: Icons.note_add_outlined,
-            onPressed: () => _insert('\n\n<!-- page -->\n\n'),
-          ),
-          _CommandButton(
-            tooltip: tr.toolbar.insert.newPageWithSettings,
-            icon: Icons.tune,
-            onPressed: () => _insert('''
+            ),
+          if (_supports(TemplateToolbarAction.divider))
+            _CommandButton(
+              tooltip: tr.toolbar.formatting.divider,
+              icon: Icons.horizontal_rule,
+              onPressed: () => _insert('\n\n---\n\n'),
+            ),
+          if (_supports(TemplateToolbarAction.newPage))
+            _CommandButton(
+              tooltip: tr.toolbar.insert.newPage,
+              icon: Icons.note_add_outlined,
+              onPressed: () => _insert('\n\n<!-- page -->\n\n'),
+            ),
+          if (_supports(TemplateToolbarAction.pageSettings))
+            _CommandButton(
+              tooltip: tr.toolbar.insert.newPageWithSettings,
+              icon: Icons.tune,
+              onPressed: () => _insert('''
 
 <!-- page
 size: a4
@@ -177,7 +196,7 @@ layout: default
 -->
 
 '''),
-          ),
+            ),
         ],
       ),
     );
