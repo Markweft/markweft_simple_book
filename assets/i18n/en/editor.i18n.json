@@ -14,6 +14,7 @@
   "sidebar": {
     "title": "Book",
     "close": "Close book",
+    "appSettings": "App settings",
     "settings": {
       "title": "Book settings",
       "subtitle": "Page, language, typography"
@@ -26,11 +27,13 @@
   "chapterManager": {
     "title": "Chapters",
     "add": "Add chapter",
+    "addChild": "Add subchapter",
     "rename": "Rename",
     "renameTitle": "Rename chapter",
     "delete": "Delete chapter",
     "deleteQuestion": "Delete chapter?",
     "deleteDescription": "Delete “{title}” and its Markdown file? A history checkpoint will be created first.",
+    "deleteTreeDescription": "Delete “{title}” and all of its nested subchapters? A history checkpoint will be created first.",
     "atLeastOne": "A book must contain at least one chapter.",
     "moveUp": "Move up",
     "moveDown": "Move down",
@@ -78,7 +81,6 @@
       "saveSettings": "Unable to save book settings: {error}"
     }
   },
-
   "chapterOne": "@:editor.chapterManager.defaultFirst",
   "loadBookFailed": "@:editor.save.errors.loadBook",
   "automaticRecoveryCheckpoint": "@:editor.save.automaticRecovery",
