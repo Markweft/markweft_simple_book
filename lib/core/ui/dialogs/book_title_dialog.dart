@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 
 final class BookTitleDialog extends StatefulWidget {
   const BookTitleDialog({
@@ -51,8 +51,8 @@ final class _BookTitleDialogState extends State<BookTitleDialog> {
         autofocus: true,
         textInputAction: TextInputAction.done,
         decoration: InputDecoration(
-          labelText: tr.dialogs.bookTitle,
-          hintText: tr.dialogs.bookTitleHint,
+          labelText: tr.dialogs.bookTitle.field.label,
+          hintText: tr.dialogs.bookTitle.field.hint,
           border: const OutlineInputBorder(),
         ),
         onSubmitted: (_) => _submit(),
@@ -60,7 +60,7 @@ final class _BookTitleDialogState extends State<BookTitleDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(tr.app.cancel),
+          child: Text(tr.app.actions.cancel),
         ),
         FilledButton(
           onPressed: _submit,
