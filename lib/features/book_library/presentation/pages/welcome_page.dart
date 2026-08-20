@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:markweft_simple_book/i18n/strings.g.dart';
 import 'package:path/path.dart' as path;
 
 final class WelcomePage extends StatelessWidget {
@@ -40,8 +41,8 @@ final class WelcomePage extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: AlignmentDirectional.topStart,
+                  end: AlignmentDirectional.bottomEnd,
                   colors: [
                     scheme.surface,
                     scheme.surfaceContainerLow.withValues(alpha: 0.8),
@@ -114,9 +115,10 @@ final class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final tr = Translations.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 18, 28, 10),
+      padding: const EdgeInsetsDirectional.fromSTEB(28, 18, 28, 10),
       child: Row(
         children: [
           Container(
@@ -133,7 +135,7 @@ final class _TopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 11),
-          Text('Markweft', style: Theme.of(context).textTheme.titleLarge),
+          Text(tr.app.name, style: Theme.of(context).textTheme.titleLarge),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -151,13 +153,13 @@ final class _TopBar extends StatelessWidget {
                   color: scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
-                const Text('Local-first'),
+                Text(tr.welcome.localFirst),
               ],
             ),
           ),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: 'App settings',
+            tooltip: tr.app.settings,
             onPressed: onOpenSettings,
             icon: const Icon(Icons.settings_outlined),
           ),
@@ -176,6 +178,7 @@ final class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final tr = Translations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(30),
@@ -203,11 +206,11 @@ final class _Hero extends StatelessWidget {
                   color: scheme.primaryContainer,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Text('Markdown publishing workspace'),
+                child: Text(tr.welcome.workspaceBadge),
               ),
               const SizedBox(height: 18),
               Text(
-                'Write once.\nPublish beautifully.',
+                tr.welcome.heroTitle,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontSize: compact ? 38 : 46,
                       height: 1.04,
@@ -215,7 +218,7 @@ final class _Hero extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'Build long-form books with chapters, version history, PDF layouts and reflowable EPUB output.',
+                tr.welcome.heroDescription,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -223,16 +226,17 @@ final class _Hero extends StatelessWidget {
               const SizedBox(height: 24),
               Wrap(
                 spacing: 10,
+                runSpacing: 10,
                 children: [
                   FilledButton.icon(
                     onPressed: onCreateBook,
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('New book'),
+                    label: Text(tr.welcome.newBook),
                   ),
                   OutlinedButton.icon(
                     onPressed: onOpenBook,
                     icon: const Icon(Icons.folder_open_rounded),
-                    label: const Text('Open book'),
+                    label: Text(tr.welcome.openBook),
                   ),
                 ],
               ),
@@ -286,6 +290,8 @@ final class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 980
@@ -304,29 +310,29 @@ final class _QuickActions extends StatelessWidget {
             _ActionCard(
               width: width,
               icon: Icons.add_rounded,
-              title: 'Create book',
-              subtitle: 'Start a new structured .mdw project.',
+              title: tr.welcome.createBook,
+              subtitle: tr.welcome.createBookDescription,
               onTap: onCreateBook,
             ),
             _ActionCard(
               width: width,
               icon: Icons.folder_open_rounded,
-              title: 'Open project',
-              subtitle: 'Continue an existing Markweft book.',
+              title: tr.welcome.openProject,
+              subtitle: tr.welcome.openProjectDescription,
               onTap: onOpenBook,
             ),
             _ActionCard(
               width: width,
               icon: Icons.upload_file_rounded,
-              title: 'Import Markdown',
-              subtitle: 'Convert a Markdown manuscript into a book.',
+              title: tr.welcome.importMarkdown,
+              subtitle: tr.welcome.importMarkdownDescription,
               onTap: onImportMarkdown,
             ),
             _ActionCard(
               width: width,
               icon: Icons.swap_horiz_rounded,
-              title: 'Convert version',
-              subtitle: 'Create a compatible MDW v1 or v3 copy.',
+              title: tr.welcome.convertVersion,
+              subtitle: tr.welcome.convertVersionDescription,
               onTap: onConvertBookVersion,
             ),
           ],
@@ -411,26 +417,31 @@ final class _RecentSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text('Recent books', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              tr.welcome.recentBooks,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const Spacer(),
-            Text('${recentProjects.length} projects'),
+            Text(tr.welcome.projects(count: recentProjects.length)),
           ],
         ),
         const SizedBox(height: 12),
         if (recentProjects.isEmpty)
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
-                  Icon(Icons.history_rounded),
-                  SizedBox(width: 12),
-                  Text('Your recent books will appear here.'),
+                  const Icon(Icons.history_rounded),
+                  const SizedBox(width: 12),
+                  Text(tr.welcome.noRecentBooks),
                 ],
               ),
             ),
@@ -459,12 +470,12 @@ final class _RecentSection extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'Open book',
+                          tooltip: tr.welcome.openRecent,
                           onPressed: () => onOpenRecent(recentProjects[i]),
                           icon: const Icon(Icons.arrow_forward_rounded),
                         ),
                         IconButton(
-                          tooltip: 'Remove from recent books',
+                          tooltip: tr.welcome.removeRecent,
                           onPressed: () => onRemoveRecent(recentProjects[i]),
                           icon: const Icon(Icons.close_rounded),
                         ),
