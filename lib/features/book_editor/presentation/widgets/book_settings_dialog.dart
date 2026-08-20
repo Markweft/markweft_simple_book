@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 import 'package:markweft_simple_book/features/book_editor/application/template_registry.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 
 final class BookSettingsPage extends StatefulWidget {
@@ -26,8 +26,10 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
     Translations tr,
   ) {
     return switch (orientation) {
-      BookPageOrientation.portrait => tr.bookSettings.portrait,
-      BookPageOrientation.landscape => tr.bookSettings.landscape,
+      BookPageOrientation.portrait =>
+        tr.bookSettings.sections.document.orientationValues.portrait,
+      BookPageOrientation.landscape =>
+        tr.bookSettings.sections.document.orientationValues.landscape,
     };
   }
 
@@ -35,12 +37,13 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
     BookTextAlignment alignment,
     Translations tr,
   ) {
+    final values = tr.bookSettings.sections.typography.alignmentValues;
     return switch (alignment) {
-      BookTextAlignment.start => tr.bookSettings.start,
-      BookTextAlignment.left => tr.bookSettings.left,
-      BookTextAlignment.center => tr.bookSettings.center,
-      BookTextAlignment.right => tr.bookSettings.right,
-      BookTextAlignment.justify => tr.bookSettings.justify,
+      BookTextAlignment.start => values.start,
+      BookTextAlignment.left => values.left,
+      BookTextAlignment.center => values.center,
+      BookTextAlignment.right => values.right,
+      BookTextAlignment.justify => values.justify,
     };
   }
 
@@ -49,17 +52,20 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
     final descriptor = TemplateRegistry.descriptor(_settings.templateId);
     final typography = _settings.typography;
     final tr = Translations.of(context);
+    final document = tr.bookSettings.sections.document;
+    final language = tr.bookSettings.sections.language;
+    final type = tr.bookSettings.sections.typography;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr.bookSettings.title),
+        title: Text(tr.bookSettings.page.title),
         actions: [
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 12),
             child: FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(_settings),
               icon: const Icon(Icons.check),
-              label: Text(tr.app.save),
+              label: Text(tr.app.actions.save),
             ),
           ),
         ],
@@ -73,14 +79,12 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
               children: [
                 _SettingsSection(
-                  title: tr.bookSettings.document,
+                  title: document.title,
                   icon: Icons.description_outlined,
                   children: [
                     DropdownButtonFormField<String>(
                       initialValue: _settings.templateId,
-                      decoration: InputDecoration(
-                        labelText: tr.bookSettings.template,
-                      ),
+                      decoration: InputDecoration(labelText: document.template),
                       items: [
                         for (final item in TemplateRegistry.available)
                           DropdownMenuItem(
@@ -111,7 +115,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                           child: DropdownButtonFormField<BookPageSize>(
                             initialValue: _settings.pageSize,
                             decoration: InputDecoration(
-                              labelText: tr.bookSettings.pageSize,
+                              labelText: document.pageSize,
                             ),
                             items: [
                               for (final size in BookPageSize.values)
@@ -135,7 +139,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                           child: DropdownButtonFormField<BookPageOrientation>(
                             initialValue: _settings.orientation,
                             decoration: InputDecoration(
-                              labelText: tr.bookSettings.orientation,
+                              labelText: document.orientation,
                             ),
                             items: [
                               for (final value in BookPageOrientation.values)
@@ -163,7 +167,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                           child: DropdownButtonFormField<double>(
                             initialValue: _settings.margin,
                             decoration: InputDecoration(
-                              labelText: tr.bookSettings.pageMargin,
+                              labelText: document.pageMargin,
                             ),
                             items: const [12, 18, 24, 30, 36, 48, 60]
                                 .map(
@@ -188,7 +192,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                           child: DropdownButtonFormField<double>(
                             initialValue: _settings.contentPadding,
                             decoration: InputDecoration(
-                              labelText: tr.bookSettings.contentPadding,
+                              labelText: document.contentPadding,
                             ),
                             items: const [0, 8, 12, 18, 24, 36, 48]
                                 .map(
@@ -214,8 +218,8 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                     DropdownButtonFormField<int>(
                       initialValue: _settings.defaultColumns,
                       decoration: InputDecoration(
-                        labelText: tr.bookSettings.columns,
-                        helperText: tr.bookSettings.columnsHelper,
+                        labelText: document.columns.title,
+                        helperText: document.columns.helper,
                       ),
                       items: [
                         for (final columns in descriptor.supportedColumns)
@@ -237,7 +241,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                 ),
                 const SizedBox(height: 20),
                 _SettingsSection(
-                  title: tr.bookSettings.languageDirection,
+                  title: language.title,
                   icon: Icons.language_outlined,
                   children: [
                     Row(
@@ -246,24 +250,24 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                           child: DropdownButtonFormField<String>(
                             initialValue: _settings.languageCode,
                             decoration: InputDecoration(
-                              labelText: tr.bookSettings.bookLanguage,
+                              labelText: language.bookLanguage,
                             ),
                             items: [
                               DropdownMenuItem(
                                 value: 'en',
-                                child: Text(tr.app.english),
+                                child: Text(tr.language.locales.en),
                               ),
                               DropdownMenuItem(
                                 value: 'ar',
-                                child: Text(tr.app.arabic),
+                                child: Text(tr.language.locales.ar),
                               ),
                               DropdownMenuItem(
                                 value: 'fr',
-                                child: Text(tr.app.french),
+                                child: Text(tr.language.locales.fr),
                               ),
                               DropdownMenuItem(
                                 value: 'de',
-                                child: Text(tr.app.german),
+                                child: Text(tr.language.locales.de),
                               ),
                             ],
                             onChanged: (value) {
@@ -284,16 +288,16 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                           child: DropdownButtonFormField<BookDirection>(
                             initialValue: _settings.direction,
                             decoration: InputDecoration(
-                              labelText: tr.bookSettings.direction,
+                              labelText: language.direction,
                             ),
                             items: [
                               DropdownMenuItem(
                                 value: BookDirection.ltr,
-                                child: Text(tr.bookSettings.ltr),
+                                child: Text(language.directionValues.ltr),
                               ),
                               DropdownMenuItem(
                                 value: BookDirection.rtl,
-                                child: Text(tr.bookSettings.rtl),
+                                child: Text(language.directionValues.rtl),
                               ),
                             ],
                             onChanged: (value) {
@@ -312,30 +316,28 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                 ),
                 const SizedBox(height: 20),
                 _SettingsSection(
-                  title: tr.bookSettings.typography,
+                  title: type.title,
                   icon: Icons.text_fields_outlined,
                   children: [
                     DropdownButtonFormField<String>(
                       initialValue: typography.fontFamily ?? 'system',
-                      decoration: InputDecoration(
-                        labelText: tr.bookSettings.fontFamily,
-                      ),
+                      decoration: InputDecoration(labelText: type.fontFamily),
                       items: [
                         DropdownMenuItem(
                           value: 'system',
-                          child: Text(tr.bookSettings.systemDefault),
+                          child: Text(type.fontFamilies.system),
                         ),
                         DropdownMenuItem(
                           value: 'serif',
-                          child: Text(tr.bookSettings.serif),
+                          child: Text(type.fontFamilies.serif),
                         ),
                         DropdownMenuItem(
                           value: 'sans-serif',
-                          child: Text(tr.bookSettings.sansSerif),
+                          child: Text(type.fontFamilies.sansSerif),
                         ),
                         DropdownMenuItem(
                           value: 'monospace',
-                          child: Text(tr.bookSettings.monospace),
+                          child: Text(type.fontFamilies.monospace),
                         ),
                       ],
                       onChanged: (value) {
@@ -356,9 +358,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                         Expanded(
                           child: DropdownButtonFormField<double>(
                             initialValue: typography.fontSize,
-                            decoration: InputDecoration(
-                              labelText: tr.bookSettings.fontSize,
-                            ),
+                            decoration: InputDecoration(labelText: type.fontSize),
                             items: const [10, 11, 12, 13, 14, 16, 18, 20]
                                 .map(
                                   (value) => DropdownMenuItem<double>(
@@ -382,7 +382,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                           child: DropdownButtonFormField<int>(
                             initialValue: typography.fontWeight,
                             decoration: InputDecoration(
-                              labelText: tr.bookSettings.fontWeight,
+                              labelText: type.fontWeight,
                             ),
                             items: const [300, 400, 500, 600, 700]
                                 .map(
@@ -410,9 +410,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                         Expanded(
                           child: DropdownButtonFormField<double>(
                             initialValue: typography.lineHeight,
-                            decoration: InputDecoration(
-                              labelText: tr.bookSettings.lineHeight,
-                            ),
+                            decoration: InputDecoration(labelText: type.lineHeight),
                             items: const [1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0]
                                 .map(
                                   (value) => DropdownMenuItem(
@@ -435,9 +433,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                         Expanded(
                           child: DropdownButtonFormField<BookTextAlignment>(
                             initialValue: typography.alignment,
-                            decoration: InputDecoration(
-                              labelText: tr.bookSettings.alignment,
-                            ),
+                            decoration: InputDecoration(labelText: type.alignment),
                             items: [
                               for (final value in BookTextAlignment.values)
                                 DropdownMenuItem(
@@ -461,11 +457,12 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                 ),
                 const SizedBox(height: 20),
                 _SettingsSection(
-                  title: tr.bookSettings.templateBehavior,
+                  title: tr.bookSettings.sections.templateBehavior.title,
                   icon: Icons.auto_awesome_outlined,
                   children: [
                     Text(
-                      tr.bookSettings.chapterOpeningLayout(
+                      tr.bookSettings.sections.templateBehavior
+                          .chapterOpeningLayout(
                         layout: descriptor.chapterLayouts.first,
                       ),
                     ),
