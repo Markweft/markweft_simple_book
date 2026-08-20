@@ -438,41 +438,14 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   Future<String?> _askForChapterTitle({
     required String title,
     String? initialValue,
-  }) async {
-    final controller = TextEditingController(text: initialValue);
-    final tr = Translations.of(context);
-    final result = await showDialog<String>(
+  }) {
+    return showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: tr.dialogs.chapterTitle.fieldLabel,
-          ),
-          onSubmitted: (value) {
-            final text = value.trim();
-            if (text.isNotEmpty) Navigator.of(context).pop(text);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(tr.app.actions.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) Navigator.of(context).pop(text);
-            },
-            child: Text(tr.app.actions.save),
-          ),
-        ],
+      builder: (_) => _ChapterTitleDialog(
+        title: title,
+        initialValue: initialValue,
       ),
     );
-    controller.dispose();
-    return result;
   }
 
   Future<void> _showBookSettings() async {
@@ -965,7 +938,7 @@ final class _BookSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
-    return ColoredBox(
+    return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1095,6 +1068,68 @@ final class _BookSidebar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+final class _ChapterTitleDialog extends StatefulWidget {
+  const _ChapterTitleDialog({
+    required this.title,
+    this.initialValue,
+  });
+
+  final String title;
+  final String? initialValue;
+
+  @override
+  State<_ChapterTitleDialog> createState() => _ChapterTitleDialogState();
+}
+
+final class _ChapterTitleDialogState extends State<_ChapterTitleDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isNotEmpty) {
+      Navigator.of(context).pop(text);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          labelText: tr.dialogs.chapterTitle.fieldLabel,
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr.app.actions.cancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(tr.app.actions.save),
+        ),
+      ],
     );
   }
 }
