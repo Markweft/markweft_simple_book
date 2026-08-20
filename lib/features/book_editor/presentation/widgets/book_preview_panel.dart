@@ -113,13 +113,13 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
             onRefresh: _scope == BookPreviewScope.book ? _loadWholeBook : null,
           ),
           const Divider(height: 1),
-          Expanded(child: _buildBody(context, markdown)),
+          Expanded(child: _buildBody(markdown)),
         ],
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context, String? markdown) {
+  Widget _buildBody(String? markdown) {
     if (_scope == BookPreviewScope.book && _loadingWholeBook && markdown == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -155,16 +155,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
           settings: widget.settings,
           markdown: source,
         ),
-      BookOutputFormat.epub => _ReflowPreview(
-          markdown: source,
-          formatLabel: 'EPUB',
-          maxWidth: 720,
-        ),
-      BookOutputFormat.html => _ReflowPreview(
-          markdown: source,
-          formatLabel: 'HTML',
-          maxWidth: 960,
-        ),
+      BookOutputFormat.epub => _EpubPreview(markdown: source),
     };
   }
 }
@@ -207,11 +198,6 @@ final class _PreviewToolbar extends StatelessWidget {
                 value: BookOutputFormat.epub,
                 icon: Icon(Icons.menu_book_outlined),
                 label: Text('EPUB'),
-              ),
-              ButtonSegment(
-                value: BookOutputFormat.html,
-                icon: Icon(Icons.language_outlined),
-                label: Text('HTML'),
               ),
             ],
             selected: {format},
@@ -271,16 +257,10 @@ final class _PdfPreview extends StatelessWidget {
   }
 }
 
-final class _ReflowPreview extends StatelessWidget {
-  const _ReflowPreview({
-    required this.markdown,
-    required this.formatLabel,
-    required this.maxWidth,
-  });
+final class _EpubPreview extends StatelessWidget {
+  const _EpubPreview({required this.markdown});
 
   final String markdown;
-  final String formatLabel;
-  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -288,7 +268,7 @@ final class _ReflowPreview extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
+          constraints: const BoxConstraints(maxWidth: 720),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
@@ -307,7 +287,7 @@ final class _ReflowPreview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    '$formatLabel · reflowable preview',
+                    'EPUB · reflowable preview',
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 20),
