@@ -14,6 +14,7 @@ final class RecentProjectsStore {
   Future<List<String>> add(
     String projectPath, {
     String? bookmark,
+    int? version,
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final current = await _loadEntries();
@@ -22,24 +23,40 @@ final class RecentProjectsStore {
       _RecentProjectEntry(
         path: projectPath,
         bookmark: bookmark ?? previous?.bookmark,
+        version: version ?? previous?.version,
       ),
       ...current.where((entry) => entry.path != projectPath),
     ].take(_maximumItems).toList(growable: false);
 
-    await preferences.setStringList(
-      _storageKey,
-      updated.map((entry) => jsonEncode(entry.toJson())).toList(growable: false),
-    );
-
+    await _saveEntries(preferences, updated);
     return updated.map((entry) => entry.path).toList(growable: false);
+  }
+
+  Future<void> cacheVersion(String projectPath, int version) async {
+    final preferences = await SharedPreferences.getInstance();
+    final current = await _loadEntries();
+    final updated = [
+      for (final entry in current)
+        if (entry.path == projectPath)
+          entry.copyWith(version: version)
+        else
+          entry,
+    ];
+    await _saveEntries(preferences, updated);
+  }
+
+  Future<int?> versionFor(String projectPath) async {
+    final entries = await _loadEntries();
+    for (final entry in entries) {
+      if (entry.path == projectPath) return entry.version;
+    }
+    return null;
   }
 
   Future<String?> bookmarkFor(String projectPath) async {
     final entries = await _loadEntries();
     for (final entry in entries) {
-      if (entry.path == projectPath) {
-        return entry.bookmark;
-      }
+      if (entry.path == projectPath) return entry.bookmark;
     }
     return null;
   }
@@ -51,11 +68,7 @@ final class RecentProjectsStore {
         .where((entry) => entry.path != projectPath)
         .toList(growable: false);
 
-    await preferences.setStringList(
-      _storageKey,
-      updated.map((entry) => jsonEncode(entry.toJson())).toList(growable: false),
-    );
-
+    await _saveEntries(preferences, updated);
     return updated.map((entry) => entry.path).toList(growable: false);
   }
 
@@ -66,45 +79,49 @@ final class RecentProjectsStore {
 
     for (final value in stored) {
       final entry = _decodeEntry(value);
-      if (entry != null) {
-        entries.add(entry);
-      }
+      if (entry != null) entries.add(entry);
     }
 
     final normalized = entries.take(_maximumItems).toList(growable: false);
     if (normalized.length != stored.length ||
         !stored.every((value) => value.trimLeft().startsWith('{'))) {
-      await preferences.setStringList(
-        _storageKey,
-        normalized
-            .map((entry) => jsonEncode(entry.toJson()))
-            .toList(growable: false),
-      );
+      await _saveEntries(preferences, normalized);
     }
 
     return normalized;
+  }
+
+  Future<void> _saveEntries(
+    SharedPreferences preferences,
+    List<_RecentProjectEntry> entries,
+  ) {
+    return preferences.setStringList(
+      _storageKey,
+      entries.map((entry) => jsonEncode(entry.toJson())).toList(growable: false),
+    );
   }
 
   _RecentProjectEntry? _decodeEntry(String value) {
     try {
       final decoded = jsonDecode(value);
       if (decoded is Map<String, dynamic>) {
-        final path = decoded['path']?.toString();
-        if (path == null || path.isEmpty) {
-          return null;
-        }
+        final projectPath = decoded['path']?.toString();
+        if (projectPath == null || projectPath.isEmpty) return null;
         final bookmark = decoded['bookmark']?.toString();
+        final rawVersion = decoded['version'];
+        final version = rawVersion is int ? rawVersion : int.tryParse('$rawVersion');
         return _RecentProjectEntry(
-          path: path,
+          path: projectPath,
           bookmark: bookmark == null || bookmark.isEmpty ? null : bookmark,
+          version: version,
         );
       }
     } on FormatException {
       // Legacy versions stored raw file-system paths.
     }
 
-    final path = value.trim();
-    return path.isEmpty ? null : _RecentProjectEntry(path: path);
+    final projectPath = value.trim();
+    return projectPath.isEmpty ? null : _RecentProjectEntry(path: projectPath);
   }
 }
 
@@ -112,14 +129,25 @@ final class _RecentProjectEntry {
   const _RecentProjectEntry({
     required this.path,
     this.bookmark,
+    this.version,
   });
 
   final String path;
   final String? bookmark;
+  final int? version;
+
+  _RecentProjectEntry copyWith({int? version}) {
+    return _RecentProjectEntry(
+      path: path,
+      bookmark: bookmark,
+      version: version ?? this.version,
+    );
+  }
 
   Map<String, Object?> toJson() => <String, Object?>{
         'path': path,
         if (bookmark != null) 'bookmark': bookmark,
+        if (version != null) 'version': version,
       };
 }
 
