@@ -1,0 +1,33 @@
+{
+  "page": {
+    "title": "سجل الإصدارات",
+    "empty": "لا توجد إصدارات بعد. أنشئ إصداراً يدوياً أو واصل التحرير؛ يتم إنشاء نقاط الاستعادة تلقائياً."
+  },
+  "create": {
+    "title": "إنشاء إصدار",
+    "descriptionLabel": "الوصف",
+    "descriptionHint": "قبل إعادة كتابة الفصل الرابع",
+    "manualVersion": "إصدار يدوي"
+  },
+  "reasons": {
+    "manual": "يدوي",
+    "recovery": "استعادة",
+    "beforeDelete": "قبل الحذف",
+    "beforeRestore": "قبل الاستعادة",
+    "settingsChanged": "تم تغيير الإعدادات"
+  },
+  "restore": {
+    "question": "استعادة هذا الإصدار؟",
+    "description": "سيتم حفظ حالة الكتاب الحالية تلقائياً قبل استعادة {date}.",
+    "action": "استعادة"
+  },
+  "delete": {
+    "question": "حذف الإصدار اليدوي؟",
+    "description": "سيؤدي هذا إلى إزالة نقطة الحفظ من سجل الإصدارات.",
+    "action": "حذف"
+  },
+  "metadata": {
+    "chapters": "{count} فصول",
+    "summary": "{date} · {chapters} · {reason}"
+  }
+}
