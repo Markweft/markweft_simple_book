@@ -33,23 +33,50 @@ extension ChapterManagementRepositoryExtensions on BookProjectRepository {
     return updated;
   }
 
-  Future<void> deleteChapter(
+  Future<List<BookChapterFile>> deleteChapterTree(
     MarkweftProject project,
     BookChapterFile chapter,
   ) async {
     final chapters = await loadChapters(project);
-    if (chapters.length <= 1) {
+    final idsToDelete = <String>{chapter.id};
+
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (final item in chapters) {
+        if (item.parentId != null &&
+            idsToDelete.contains(item.parentId) &&
+            idsToDelete.add(item.id)) {
+          changed = true;
+        }
+      }
+    }
+
+    final remaining = chapters
+        .where((item) => !idsToDelete.contains(item.id))
+        .toList(growable: false);
+    if (remaining.isEmpty) {
       throw StateError('A book must contain at least one chapter.');
     }
 
-    final file = project.chapterFile(chapter.fileName);
-    if (await file.exists()) await file.delete();
+    final deleted = chapters
+        .where((item) => idsToDelete.contains(item.id))
+        .toList(growable: false);
+    for (final item in deleted) {
+      final file = project.chapterFile(item.fileName);
+      if (await file.exists()) await file.delete();
+    }
 
-    await _writeIndex(
-      project,
-      chapters.where((item) => item.id != chapter.id).toList(),
-    );
+    await _writeIndex(project, remaining);
     await flushProject(project);
+    return deleted;
+  }
+
+  Future<void> deleteChapter(
+    MarkweftProject project,
+    BookChapterFile chapter,
+  ) async {
+    await deleteChapterTree(project, chapter);
   }
 
   Future<void> reorderChapters(
@@ -68,10 +95,11 @@ extension ChapterManagementRepositoryExtensions on BookProjectRepository {
     await project.chaptersIndexFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert([
         for (final chapter in chapters)
-          <String, String>{
+          <String, Object?>{
             'id': chapter.id,
             'title': chapter.title,
             'file': chapter.fileName,
+            'parentId': chapter.parentId,
           },
       ]),
       flush: true,
