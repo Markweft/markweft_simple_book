@@ -5,6 +5,7 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:markweft_simple_book/features/book_editor/application/book_output_format.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
+import 'package:markweft_simple_book/i18n/strings.g.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 
 final class BookPreviewPanel extends StatefulWidget {
@@ -101,7 +102,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
         : _wholeBookMarkdown;
 
     return ColoredBox(
-      color: const Color(0xFFE8E3DB),
+      color: Theme.of(context).colorScheme.surfaceContainer,
       child: Column(
         children: [
           _PreviewToolbar(
@@ -120,6 +121,8 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
   }
 
   Widget _buildBody(String? markdown) {
+    final tr = Translations.of(context);
+
     if (_scope == BookPreviewScope.book && _loadingWholeBook && markdown == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -133,14 +136,14 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
             children: [
               const Icon(Icons.error_outline, size: 42),
               const SizedBox(height: 12),
-              const Text('Unable to load full-book preview.'),
+              Text(tr.editor.fullBookLoadFailed),
               const SizedBox(height: 8),
               Text('$_wholeBookError', textAlign: TextAlign.center),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _loadWholeBook,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text(tr.app.retry),
               ),
             ],
           ),
@@ -179,6 +182,8 @@ final class _PreviewToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Wrap(
@@ -188,16 +193,16 @@ final class _PreviewToolbar extends StatelessWidget {
         children: [
           SegmentedButton<BookOutputFormat>(
             showSelectedIcon: false,
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: BookOutputFormat.pdf,
-                icon: Icon(Icons.picture_as_pdf_outlined),
-                label: Text('PDF'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: Text(tr.editor.pdf),
               ),
               ButtonSegment(
                 value: BookOutputFormat.epub,
-                icon: Icon(Icons.menu_book_outlined),
-                label: Text('EPUB'),
+                icon: const Icon(Icons.menu_book_outlined),
+                label: Text(tr.editor.epub),
               ),
             ],
             selected: {format},
@@ -205,16 +210,16 @@ final class _PreviewToolbar extends StatelessWidget {
           ),
           SegmentedButton<BookPreviewScope>(
             showSelectedIcon: false,
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: BookPreviewScope.chapter,
-                icon: Icon(Icons.article_outlined),
-                label: Text('Chapter'),
+                icon: const Icon(Icons.article_outlined),
+                label: Text(tr.editor.chapter),
               ),
               ButtonSegment(
                 value: BookPreviewScope.book,
-                icon: Icon(Icons.library_books_outlined),
-                label: Text('Full book'),
+                icon: const Icon(Icons.library_books_outlined),
+                label: Text(tr.editor.fullBook),
               ),
             ],
             selected: {scope},
@@ -224,7 +229,7 @@ final class _PreviewToolbar extends StatelessWidget {
           ),
           if (onRefresh != null)
             IconButton(
-              tooltip: 'Refresh full-book preview',
+              tooltip: tr.editor.refreshFullBook,
               onPressed: loading ? null : onRefresh,
               icon: loading
                   ? const SizedBox.square(
@@ -264,6 +269,8 @@ final class _EpubPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Center(
@@ -287,7 +294,7 @@ final class _EpubPreview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'EPUB · reflowable preview',
+                    tr.editor.epubReflowablePreview,
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 20),
