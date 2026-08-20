@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 
 final class MarkdownCommandToolbar extends StatelessWidget {
   const MarkdownCommandToolbar({
@@ -61,76 +61,77 @@ final class MarkdownCommandToolbar extends StatelessWidget {
       child: Row(
         children: [
           _CommandButton(
-            tooltip: tr.toolbar.heading1,
+            tooltip: tr.toolbar.headings.h1,
             label: 'H1',
             onPressed: () => _insert(
-              '\n# ${tr.toolbar.heading}\n',
+              '\n# ${tr.toolbar.headings.placeholder}\n',
               cursorOffset: 3,
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.heading2,
+            tooltip: tr.toolbar.headings.h2,
             label: 'H2',
             onPressed: () => _insert(
-              '\n## ${tr.toolbar.heading}\n',
+              '\n## ${tr.toolbar.headings.placeholder}\n',
               cursorOffset: 4,
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.bold,
+            tooltip: tr.toolbar.formatting.bold,
             icon: Icons.format_bold,
             onPressed: () => _wrapSelection(
               '**',
               '**',
-              tr.toolbar.boldText,
+              tr.toolbar.placeholders.boldText,
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.italic,
+            tooltip: tr.toolbar.formatting.italic,
             icon: Icons.format_italic,
             onPressed: () => _wrapSelection(
               '*',
               '*',
-              tr.toolbar.italicText,
+              tr.toolbar.placeholders.italicText,
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.bulletList,
+            tooltip: tr.toolbar.lists.bullet,
             icon: Icons.format_list_bulleted,
             onPressed: () => _insert(
-              '\n- ${tr.toolbar.itemOne}\n- ${tr.toolbar.itemTwo}\n',
+              '\n- ${tr.toolbar.lists.itemOne}\n- ${tr.toolbar.lists.itemTwo}\n',
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.numberedList,
+            tooltip: tr.toolbar.lists.numbered,
             icon: Icons.format_list_numbered,
             onPressed: () => _insert(
-              '\n1. ${tr.toolbar.firstItem}\n2. ${tr.toolbar.secondItem}\n',
+              '\n1. ${tr.toolbar.lists.firstItem}\n2. ${tr.toolbar.lists.secondItem}\n',
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.quote,
+            tooltip: tr.toolbar.formatting.quote,
             icon: Icons.format_quote,
-            onPressed: () => _insert('\n> ${tr.toolbar.quoteText}\n'),
+            onPressed: () =>
+                _insert('\n> ${tr.toolbar.placeholders.quoteText}\n'),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.link,
+            tooltip: tr.toolbar.insert.link,
             icon: Icons.link,
             onPressed: () => _insert(
-              '[${tr.toolbar.linkText}](https://example.com)',
+              '[${tr.toolbar.placeholders.linkText}](https://example.com)',
               cursorOffset: 1,
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.image,
+            tooltip: tr.toolbar.insert.image,
             icon: Icons.image_outlined,
             onPressed: () => _insert(
-              '![${tr.toolbar.imageDescription}](assets/images/image.png)',
+              '![${tr.toolbar.placeholders.imageDescription}](assets/images/image.png)',
               cursorOffset: 2,
             ),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.table,
+            tooltip: tr.toolbar.insert.table,
             icon: Icons.table_chart_outlined,
             onPressed: () => _insert('''
 
@@ -141,7 +142,7 @@ final class MarkdownCommandToolbar extends StatelessWidget {
 '''),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.codeBlock,
+            tooltip: tr.toolbar.formatting.codeBlock,
             icon: Icons.code,
             onPressed: () => _insert('''
 
@@ -153,17 +154,17 @@ void main() {
 '''),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.divider,
+            tooltip: tr.toolbar.formatting.divider,
             icon: Icons.horizontal_rule,
             onPressed: () => _insert('\n\n---\n\n'),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.newPage,
+            tooltip: tr.toolbar.insert.newPage,
             icon: Icons.note_add_outlined,
             onPressed: () => _insert('\n\n<!-- page -->\n\n'),
           ),
           _CommandButton(
-            tooltip: tr.toolbar.newPageSettings,
+            tooltip: tr.toolbar.insert.newPageWithSettings,
             icon: Icons.tune,
             onPressed: () => _insert('''
 
