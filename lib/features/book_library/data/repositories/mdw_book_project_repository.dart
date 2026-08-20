@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:markweft_simple_book/features/book_library/data/mappers/book_settings_json.dart';
+import 'package:markweft_simple_book/features/book_library/data/services/mdw_version_converter.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/book_chapter_file.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
@@ -160,14 +161,20 @@ final class MdwBookProjectRepository implements BookProjectRepository {
   Future<BookChapterFile> createChapter(
     MarkweftProject project, {
     required String title,
+    String? parentId,
   }) async {
     final chapters = await loadChapters(project);
+    if (parentId != null && !chapters.any((chapter) => chapter.id == parentId)) {
+      throw ArgumentError.value(parentId, 'parentId', 'Parent chapter not found.');
+    }
+
     final normalizedTitle = title.trim().isEmpty ? 'Untitled chapter' : title.trim();
     final id = 'chapter-${DateTime.now().microsecondsSinceEpoch}';
     final chapter = BookChapterFile(
       id: id,
       title: normalizedTitle,
       fileName: '$id.md',
+      parentId: parentId,
     );
 
     await project.chapterFile(chapter.fileName).writeAsString(
@@ -175,9 +182,37 @@ final class MdwBookProjectRepository implements BookProjectRepository {
       '# $normalizedTitle\n\n',
       flush: true,
     );
-    await _writeChapterIndex(project, <BookChapterFile>[...chapters, chapter]);
+
+    final next = List<BookChapterFile>.of(chapters);
+    if (parentId == null) {
+      next.add(chapter);
+    } else {
+      final parentIndex = next.indexWhere((item) => item.id == parentId);
+      var insertAt = parentIndex + 1;
+      while (insertAt < next.length && _isDescendantOf(next, next[insertAt], parentId)) {
+        insertAt++;
+      }
+      next.insert(insertAt, chapter);
+    }
+
+    await _writeChapterIndex(project, next);
     await saveProject(project);
     return chapter;
+  }
+
+  bool _isDescendantOf(
+    List<BookChapterFile> chapters,
+    BookChapterFile candidate,
+    String ancestorId,
+  ) {
+    var parentId = candidate.parentId;
+    final visited = <String>{};
+    while (parentId != null && visited.add(parentId)) {
+      if (parentId == ancestorId) return true;
+      final parent = chapters.where((item) => item.id == parentId).firstOrNull;
+      parentId = parent?.parentId;
+    }
+    return false;
   }
 
   @override
@@ -304,11 +339,11 @@ final class MdwBookProjectRepository implements BookProjectRepository {
 
     await File(path.join(project.workspace.path, 'manifest.yaml')).writeAsString(
       'format: markweft\n'
-      'version: 3\n'
+      'version: ${MdwVersionConverter.currentVersion}\n'
       'title: ${jsonEncode(project.title)}\n'
       'template:\n'
       '  id: markweft.simple\n'
-      '  version: 0.2.0\n'
+      '  version: 0.4.0\n'
       'settings: settings.json\n'
       'content: content/chapters/index.json\n'
       'assets: assets\n'
@@ -396,6 +431,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
           id: item['id']?.toString() ?? '',
           title: item['title']?.toString() ?? 'Untitled chapter',
           fileName: item['file']?.toString() ?? '',
+          parentId: _nullableString(item['parentId']),
         );
       }),
     );
@@ -409,14 +445,20 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     await project.chaptersIndexFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert([
         for (final chapter in chapters)
-          <String, String>{
+          <String, Object?>{
             'id': chapter.id,
             'title': chapter.title,
             'file': chapter.fileName,
+            'parentId': chapter.parentId,
           },
       ]),
       flush: true,
     );
+  }
+
+  String? _nullableString(Object? value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
   }
 
   Future<Directory> _createWorkspace() async {
@@ -492,6 +534,13 @@ final class MdwBookProjectRepository implements BookProjectRepository {
         .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
         .replaceAll(RegExp(r'^_+|_+$'), '');
     return normalized.isEmpty ? 'untitled_book' : normalized;
+  }
+}
+
+extension _IterableFirstOrNull<E> on Iterable<E> {
+  E? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }
 
