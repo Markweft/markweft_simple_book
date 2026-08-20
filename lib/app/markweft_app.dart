@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:markweft_simple_book/core/ui/dialogs/book_title_dialog.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/pages/book_editor_page.dart';
 import 'package:markweft_simple_book/features/book_library/data/repositories/mdw_book_project_repository.dart';
+import 'package:markweft_simple_book/features/book_library/data/services/macos_security_scoped_bookmark_service.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/recent_projects_store.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
@@ -18,8 +21,12 @@ final class MarkweftApp extends StatefulWidget {
 final class _MarkweftAppState extends State<MarkweftApp> {
   final BookProjectRepository _projectRepository = MdwBookProjectRepository();
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
+  final MacosSecurityScopedBookmarkService _bookmarkService =
+      const MacosSecurityScopedBookmarkService();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   MarkweftProject? _activeProject;
+  String? _activeSecurityScopedPath;
   List<String> _recentProjects = const <String>[];
   bool _isBusy = false;
   String? _errorMessage;
@@ -74,6 +81,37 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   }
 
   Future<void> _openRecentProject(String path) async {
+    if (Platform.isMacOS) {
+      final bookmark = await _recentProjectsStore.bookmarkFor(path);
+      if (bookmark == null) {
+        setState(() {
+          _errorMessage =
+              'This recent book was saved by an older Markweft version. '
+              'Use Open book once and select it again so macOS can save persistent access.';
+        });
+        return;
+      }
+
+      try {
+        final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
+        _activeSecurityScopedPath = resolvedPath;
+        await _runProjectAction(
+          () => _projectRepository.openProject(resolvedPath),
+        );
+        return;
+      } on Object catch (error) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _errorMessage =
+              'Unable to restore macOS permission for this book. '
+              'Open it once with Open book to refresh access. ($error)';
+        });
+        return;
+      }
+    }
+
     await _runProjectAction(() => _projectRepository.openProject(path));
   }
 
@@ -91,7 +129,18 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         return;
       }
 
-      final recentProjects = await _recentProjectsStore.add(project.file.path);
+      String? bookmark;
+      try {
+        bookmark = await _bookmarkService.createBookmark(project.file.path);
+      } on Object {
+        // The project itself is already open. Failure to persist the bookmark
+        // must not prevent editing; it only affects a future macOS relaunch.
+      }
+
+      final recentProjects = await _recentProjectsStore.add(
+        project.file.path,
+        bookmark: bookmark,
+      );
       if (!mounted) {
         return;
       }
@@ -124,6 +173,13 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     }
 
     await _projectRepository.closeProject(project);
+
+    final securityScopedPath = _activeSecurityScopedPath;
+    _activeSecurityScopedPath = null;
+    if (securityScopedPath != null) {
+      await _bookmarkService.stopAccessing(securityScopedPath);
+    }
+
     if (!mounted) {
       return;
     }
