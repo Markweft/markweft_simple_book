@@ -13,10 +13,11 @@
       "hint": "My new book"
     }
   },
-  "chapterTitle": {
+  "chapter": {
     "fieldLabel": "Chapter title"
   },
   "version": {
     "messageLabel": "Version message"
-  }
+  },
+  "chapterTitle": "@:dialogs.chapter.fieldLabel"
 }
