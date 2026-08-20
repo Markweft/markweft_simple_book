@@ -10,6 +10,7 @@ import 'package:markweft_simple_book/core/ui/theme/markweft_theme.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/pages/book_editor_page.dart';
 import 'package:markweft_simple_book/features/book_library/data/repositories/mdw_book_project_repository.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/macos_security_scoped_bookmark_service.dart';
+import 'package:markweft_simple_book/features/book_library/data/services/mdw_version_converter.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/recent_projects_store.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
@@ -27,6 +28,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
   final MacosSecurityScopedBookmarkService _bookmarkService =
       const MacosSecurityScopedBookmarkService();
+  final MdwVersionConverter _versionConverter = const MdwVersionConverter();
   final AppSettingsStore _appSettingsStore = const AppSettingsStore();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -94,6 +96,61 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     await _runProjectAction(
       () => _projectRepository.importMarkdown(title: title),
     );
+  }
+
+  Future<void> _convertBookVersion() async {
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+
+    final targetVersion = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Convert book version'),
+        content: const Text(
+          'A new .mdw copy will be created. The source book is never modified. '
+          'Version 1 is the original single-Markdown format. Version 3 is the '
+          'current chapter-based format.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(1),
+            child: const Text('Convert to v1'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(3),
+            child: const Text('Convert to v3'),
+          ),
+        ],
+      ),
+    );
+    if (targetVersion == null) return;
+
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final output = await _versionConverter.pickAndConvert(
+        targetVersion: targetVersion,
+      );
+      if (output == null || !mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Converted book saved to $output')),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Unable to convert the book: $error';
+      });
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
   }
 
   Future<void> _pickProject() async {
@@ -239,6 +296,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
               onCreateBook: _createProject,
               onOpenBook: _pickProject,
               onImportMarkdown: _importMarkdown,
+              onConvertBookVersion: _convertBookVersion,
               onOpenRecent: _openRecentProject,
               onRemoveRecent: _removeRecentProject,
             )
