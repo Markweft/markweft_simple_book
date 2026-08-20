@@ -14,6 +14,7 @@
   "sidebar": {
     "title": "الكتاب",
     "close": "إغلاق الكتاب",
+    "appSettings": "إعدادات التطبيق",
     "settings": {
       "title": "إعدادات الكتاب",
       "subtitle": "الصفحة واللغة والطباعة"
@@ -26,11 +27,13 @@
   "chapterManager": {
     "title": "الفصول",
     "add": "إضافة فصل",
+    "addChild": "إضافة فصل فرعي",
     "rename": "إعادة تسمية",
     "renameTitle": "إعادة تسمية الفصل",
     "delete": "حذف الفصل",
     "deleteQuestion": "حذف الفصل؟",
     "deleteDescription": "هل تريد حذف «{title}» وملف Markdown الخاص به؟ سيتم إنشاء نقطة حفظ في السجل أولاً.",
+    "deleteTreeDescription": "هل تريد حذف «{title}» وجميع الفصول الفرعية التابعة له؟ سيتم إنشاء نقطة حفظ في السجل أولاً.",
     "atLeastOne": "يجب أن يحتوي الكتاب على فصل واحد على الأقل.",
     "moveUp": "تحريك للأعلى",
     "moveDown": "تحريك للأسفل",
@@ -78,7 +81,6 @@
       "saveSettings": "تعذر حفظ إعدادات الكتاب: {error}"
     }
   },
-
   "chapterOne": "@:editor.chapterManager.defaultFirst",
   "loadBookFailed": "@:editor.save.errors.loadBook",
   "automaticRecoveryCheckpoint": "@:editor.save.automaticRecovery",
