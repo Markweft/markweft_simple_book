@@ -1,0 +1,36 @@
+{
+  "headings": {
+    "h1": "عنوان 1",
+    "h2": "عنوان 2",
+    "placeholder": "عنوان"
+  },
+  "formatting": {
+    "bold": "عريض",
+    "italic": "مائل",
+    "quote": "اقتباس",
+    "divider": "فاصل",
+    "codeBlock": "كتلة برمجية"
+  },
+  "lists": {
+    "bullet": "قائمة نقطية",
+    "numbered": "قائمة مرقمة",
+    "itemOne": "العنصر الأول",
+    "itemTwo": "العنصر الثاني",
+    "firstItem": "العنصر الأول",
+    "secondItem": "العنصر الثاني"
+  },
+  "insert": {
+    "link": "رابط",
+    "image": "صورة",
+    "table": "جدول",
+    "newPage": "صفحة جديدة",
+    "newPageWithSettings": "صفحة جديدة مع إعدادات"
+  },
+  "placeholders": {
+    "boldText": "نص عريض",
+    "italicText": "نص مائل",
+    "quoteText": "اقتباس",
+    "linkText": "نص الرابط",
+    "imageDescription": "وصف الصورة"
+  }
+}
