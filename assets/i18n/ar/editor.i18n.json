@@ -1,0 +1,81 @@
+{
+  "workspace": {
+    "modes": {
+      "edit": "تحرير",
+      "preview": "معاينة"
+    },
+    "markdown": {
+      "title": "Markdown",
+      "chapterTitle": "Markdown · {title}",
+      "chapterOnlyLoaded": "يتم تحميل هذا الفصل فقط داخل المحرر.",
+      "writeHint": "اكتب هذا الفصل بصيغة Markdown..."
+    }
+  },
+  "book": {
+    "title": "الكتاب",
+    "close": "إغلاق الكتاب",
+    "settings": {
+      "title": "إعدادات الكتاب",
+      "subtitle": "الصفحة واللغة والطباعة"
+    },
+    "history": {
+      "title": "سجل الإصدارات",
+      "subtitle": "الاستعادة ونقاط الحفظ والرجوع"
+    }
+  },
+  "chapters": {
+    "title": "الفصول",
+    "add": "إضافة فصل",
+    "rename": "إعادة تسمية",
+    "renameTitle": "إعادة تسمية الفصل",
+    "delete": "حذف الفصل",
+    "deleteQuestion": "حذف الفصل؟",
+    "deleteDescription": "هل تريد حذف «{title}» وملف Markdown الخاص به؟ سيتم إنشاء نقطة حفظ في السجل أولاً.",
+    "atLeastOne": "يجب أن يحتوي الكتاب على فصل واحد على الأقل.",
+    "moveUp": "تحريك للأعلى",
+    "moveDown": "تحريك للأسفل",
+    "index": "الفصل {current}/{total}",
+    "number": "الفصل {number}",
+    "defaultFirst": "الفصل الأول",
+    "loading": "جارٍ تحميل الفصل"
+  },
+  "preview": {
+    "format": {
+      "pdf": "PDF",
+      "epub": "EPUB"
+    },
+    "scope": {
+      "chapter": "الفصل",
+      "fullBook": "الكتاب كاملاً"
+    },
+    "refreshFullBook": "تحديث معاينة الكتاب كاملاً",
+    "loadFullBookFailed": "تعذر تحميل معاينة الكتاب كاملاً.",
+    "epubReflowable": "EPUB · معاينة مرنة",
+    "largeChapter": {
+      "title": "تم إيقاف المعاينة الحية لهذا الفصل الكبير",
+      "characters": "{count} حرفاً",
+      "description": "يبقى التحرير والحفظ التلقائي فعالين؛ تم إيقاف تحليل المعاينة للحفاظ على استجابة الواجهة.",
+      "renderOnce": "إنشاء المعاينة مرة واحدة"
+    }
+  },
+  "export": {
+    "menu": "تصدير الكتاب",
+    "pdf": "تصدير PDF",
+    "epub": "تصدير EPUB",
+    "success": "تم تصدير {format} إلى {path}",
+    "failure": "تعذر تصدير {format}: {error}"
+  },
+  "save": {
+    "now": "حفظ الآن",
+    "automaticRecovery": "نقطة استعادة تلقائية",
+    "beforeDeleting": "قبل حذف {title}",
+    "beforeChangingSettings": "قبل تغيير إعدادات الكتاب",
+    "errors": {
+      "loadBook": "تعذر تحميل هذا الكتاب: {error}",
+      "saveChapter": "تعذر حفظ هذا الفصل: {error}",
+      "flushProject": "تم حفظ الفصل محلياً، لكن تحديث ملف .mdw فشل: {error}",
+      "openChapter": "تعذر فتح الفصل: {error}",
+      "saveSettings": "تعذر حفظ إعدادات الكتاب: {error}"
+    }
+  }
+}
