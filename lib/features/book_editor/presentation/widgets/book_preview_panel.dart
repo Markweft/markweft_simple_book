@@ -15,6 +15,7 @@ final class BookPreviewPanel extends StatefulWidget {
     required this.settings,
     required this.chapterMarkdown,
     required this.chapterTitle,
+    required this.onBeforeFullBookPreview,
     this.initialFormat = BookOutputFormat.pdf,
     this.initialScope = BookPreviewScope.chapter,
     super.key,
@@ -26,6 +27,7 @@ final class BookPreviewPanel extends StatefulWidget {
   final BookSettings settings;
   final String chapterMarkdown;
   final String? chapterTitle;
+  final Future<void> Function() onBeforeFullBookPreview;
   final BookOutputFormat initialFormat;
   final BookPreviewScope initialScope;
 
@@ -65,7 +67,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
   Future<void> _setScope(BookPreviewScope scope) async {
     if (_scope == scope) return;
     setState(() => _scope = scope);
-    if (scope == BookPreviewScope.book && _wholeBookMarkdown == null) {
+    if (scope == BookPreviewScope.book) {
       await _loadWholeBook();
     }
   }
@@ -78,6 +80,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
     });
 
     try {
+      await widget.onBeforeFullBookPreview();
       final markdown = await widget.projectRepository.loadWholeBookMarkdown(
         widget.project,
       );
@@ -110,9 +113,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
             onRefresh: _scope == BookPreviewScope.book ? _loadWholeBook : null,
           ),
           const Divider(height: 1),
-          Expanded(
-            child: _buildBody(context, markdown),
-          ),
+          Expanded(child: _buildBody(context, markdown)),
         ],
       ),
     );
