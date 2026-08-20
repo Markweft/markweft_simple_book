@@ -1,10 +1,13 @@
 {
-  "title": "Languages",
-  "wait": "Preparing your language...",
-  "locals": {
-    "english":"English",
-    "arabic":"Arabic",
-    "french":"French",
-    "german":"German"
+  "selector": {
+    "title": "Language",
+    "description": "Choose the language used by the Markweft interface."
+  },
+  "locales": {
+    "system": "System",
+    "en": "English",
+    "ar": "Arabic",
+    "fr": "French",
+    "de": "German"
   }
 }
