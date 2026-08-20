@@ -137,9 +137,13 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
             supportedFormats: _supportedFormats,
             format: _format,
             scope: _scope,
+            chapterTitle: widget.chapterTitle,
             loading: _loadingWholeBook,
             onFormatChanged: (value) => setState(() => _format = value),
             onScopeChanged: _setScope,
+            onOpenCurrentChapter: _scope == BookPreviewScope.book
+                ? () => unawaited(_setScope(BookPreviewScope.chapter))
+                : null,
             onRefresh: _scope == BookPreviewScope.book ? _loadWholeBook : null,
           ),
           const Divider(height: 1),
@@ -197,18 +201,22 @@ final class _PreviewToolbar extends StatelessWidget {
     required this.supportedFormats,
     required this.format,
     required this.scope,
+    required this.chapterTitle,
     required this.loading,
     required this.onFormatChanged,
     required this.onScopeChanged,
+    required this.onOpenCurrentChapter,
     required this.onRefresh,
   });
 
   final List<BookOutputFormat> supportedFormats;
   final BookOutputFormat format;
   final BookPreviewScope scope;
+  final String? chapterTitle;
   final bool loading;
   final ValueChanged<BookOutputFormat> onFormatChanged;
   final Future<void> Function(BookPreviewScope) onScopeChanged;
+  final VoidCallback? onOpenCurrentChapter;
   final VoidCallback? onRefresh;
 
   @override
@@ -218,7 +226,7 @@ final class _PreviewToolbar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Wrap(
-        spacing: 12,
+        spacing: 10,
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
@@ -277,6 +285,16 @@ final class _PreviewToolbar extends StatelessWidget {
               unawaited(onScopeChanged(selection.first));
             },
           ),
+          if (onOpenCurrentChapter != null)
+            FilledButton.tonalIcon(
+              onPressed: onOpenCurrentChapter,
+              icon: const Icon(Icons.my_location_rounded, size: 18),
+              label: Text(
+                tr.editor.previewPanel.openCurrentChapter(
+                  title: chapterTitle ?? tr.editor.previewPanel.scope.chapter,
+                ),
+              ),
+            ),
           if (onRefresh != null)
             IconButton(
               tooltip: tr.editor.previewPanel.refreshFullBook,
