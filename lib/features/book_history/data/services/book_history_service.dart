@@ -19,6 +19,14 @@ final class BookHistoryService {
     String message = '',
     bool enforceRecoveryInterval = false,
   }) async {
+    var latest = await latestVersion(project);
+    if (enforceRecoveryInterval && latest != null) {
+      final elapsed = DateTime.now().toUtc().difference(latest.createdAt);
+      if (elapsed < recoveryInterval) {
+        return null;
+      }
+    }
+
     await project.historyObjectsDirectory.create(recursive: true);
     await project.historyCommitsDirectory.create(recursive: true);
 
@@ -45,16 +53,9 @@ final class BookHistoryService {
     }
 
     final stateHash = sha256.convert(utf8.encode(stateParts.join('|'))).toString();
-    final latest = await latestVersion(project);
+    latest ??= await latestVersion(project);
     if (latest?.stateHash == stateHash) {
       return null;
-    }
-
-    if (enforceRecoveryInterval && latest != null) {
-      final elapsed = DateTime.now().difference(latest.createdAt);
-      if (elapsed < recoveryInterval) {
-        return null;
-      }
     }
 
     final now = DateTime.now().toUtc();
