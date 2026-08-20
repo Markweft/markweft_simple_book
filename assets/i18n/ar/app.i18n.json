@@ -1,22 +1,28 @@
 {
-  "name":"مارك ويفت",
-  "settings":"إعدادات التطبيق",
+  "identity": {
+    "name": "مارك ويفت"
+  },
   "actions": {
-    "done":"تم",
-    "save":"حفظ",
-    "cancel":"إلغاء",
-    "close":"إغلاق",
-    "delete":"حذف",
-    "restore":"استعادة",
-    "refresh":"تحديث",
-    "retry":"إعادة المحاولة"
+    "done": "تم",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "delete": "حذف",
+    "restore": "استعادة",
+    "refresh": "تحديث",
+    "retry": "إعادة المحاولة"
   },
   "status": {
-    "loading":"جارٍ التحميل...",
-    "saving":"جارٍ الحفظ..."
+    "loading": "جارٍ التحميل...",
+    "saving": "جارٍ الحفظ...",
+    "saved": "تم الحفظ",
+    "saveFailed": "فشل الحفظ"
   },
-  "alert": {
-    "saved":"تم الحفظ",
-    "saveFailed":"فشل الحفظ"
+  "appearance": {
+    "themeMode": {
+      "system": "النظام",
+      "light": "فاتح",
+      "dark": "داكن"
+    }
   }
 }
