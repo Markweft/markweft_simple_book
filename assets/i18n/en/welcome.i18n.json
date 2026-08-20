@@ -1,30 +1,55 @@
 {
-  "localFirst":"Local-first",
-  "workspaceBadge":"Markdown publishing workspace",
-  "heroTitle":"Write once.\nPublish beautifully.",
-  "heroDescription":"Build long-form books with chapters, version history, PDF layouts and reflowable EPUB output.",
-  "newBook":"New book",
-  "openBook":"Open book",
-  "createBook":"Create book",
-  "createBookDescription":"Start a new structured .mdw project.",
-  "openProject":"Open project",
-  "openProjectDescription":"Continue an existing Markweft book.",
-  "importMarkdown":"Import Markdown",
-  "importMarkdownDescription":"Convert a Markdown manuscript into a book.",
-  "convertVersion":"Convert version",
-  "convertVersionDescription":"Create a compatibility copy in another MDW format version.",
-  "convertDialogTitle":"Convert book version",
-  "convertDialogBody":"A new .mdw copy will be created. The source book is never modified. Version 1 is the original single-Markdown format. Version 3 is the current chapter-based format.",
-  "convertToV1":"Convert to v1",
-  "convertToV3":"Convert to v3",
-  "convertedSaved":"Converted book saved to {path}",
-  "convertFailed":"Unable to convert the book: {error}",
-  "recentBooks":"Recent books",
-  "projects":"{count} projects",
-  "noRecentBooks":"Your recent books will appear here.",
-  "openRecent":"Open book",
-  "removeRecent":"Remove from recent books",
-  "oldBookmark":"This recent book was saved by an older Markweft version. Use Open book once and select it again so macOS can save persistent access.",
-  "bookmarkRestoreFailed":"Unable to restore macOS permission for this book. Open it once with Open book to refresh access. ({error})",
-  "openFailed":"Unable to open the book: {error}"
+  "topBar": {
+    "localFirst": "Local-first",
+    "settingsTooltip": "App settings"
+  },
+  "hero": {
+    "badge": "Markdown publishing workspace",
+    "title": "Write once.\nPublish beautifully.",
+    "description": "Build long-form books with chapters, version history, PDF layouts and reflowable EPUB output.",
+    "actions": {
+      "newBook": "New book",
+      "openBook": "Open book"
+    }
+  },
+  "quickActions": {
+    "create": {
+      "title": "Create book",
+      "description": "Start a new structured .mdw project."
+    },
+    "open": {
+      "title": "Open project",
+      "description": "Continue an existing Markweft book."
+    },
+    "importMarkdown": {
+      "title": "Import Markdown",
+      "description": "Convert a Markdown manuscript into a book."
+    },
+    "convertVersion": {
+      "title": "Convert version",
+      "description": "Create a compatibility copy in another MDW format version."
+    }
+  },
+  "recent": {
+    "title": "Recent books",
+    "count": "{count} projects",
+    "empty": "Your recent books will appear here.",
+    "openTooltip": "Open book",
+    "removeTooltip": "Remove from recent books"
+  },
+  "conversion": {
+    "dialog": {
+      "title": "Convert book version",
+      "description": "A new .mdw copy will be created. The source book is never modified. Version 1 is the original single-Markdown format. Version 3 is the current chapter-based format.",
+      "toV1": "Convert to v1",
+      "toV3": "Convert to v3"
+    },
+    "success": "Converted book saved to {path}",
+    "failure": "Unable to convert the book: {error}"
+  },
+  "errors": {
+    "legacyBookmark": "This recent book was saved by an older Markweft version. Use Open book once and select it again so macOS can save persistent access.",
+    "bookmarkRestore": "Unable to restore macOS permission for this book. Open it once with Open book to refresh access. ({error})",
+    "openBook": "Unable to open the book: {error}"
+  }
 }
