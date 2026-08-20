@@ -6,8 +6,8 @@ final class WelcomePage extends StatelessWidget {
     required this.isBusy,
     required this.errorMessage,
     required this.recentProjects,
-    required this.themeMode,
-    required this.onThemeModeChanged,
+    required this.showRecentBookPaths,
+    required this.onOpenAppSettings,
     required this.onCreateBook,
     required this.onOpenBook,
     required this.onImportMarkdown,
@@ -19,8 +19,8 @@ final class WelcomePage extends StatelessWidget {
   final bool isBusy;
   final String? errorMessage;
   final List<String> recentProjects;
-  final ThemeMode themeMode;
-  final ValueChanged<ThemeMode> onThemeModeChanged;
+  final bool showRecentBookPaths;
+  final VoidCallback onOpenAppSettings;
   final VoidCallback onCreateBook;
   final VoidCallback onOpenBook;
   final VoidCallback onImportMarkdown;
@@ -51,48 +51,37 @@ final class WelcomePage extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                _TopBar(
-                  themeMode: themeMode,
-                  onThemeModeChanged: onThemeModeChanged,
-                ),
+                _TopBar(onOpenSettings: onOpenAppSettings),
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1180),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return ListView(
-                            padding: EdgeInsets.fromLTRB(
-                              constraints.maxWidth < 760 ? 20 : 36,
-                              26,
-                              constraints.maxWidth < 760 ? 20 : 36,
-                              42,
-                            ),
-                            children: [
-                              _Hero(
-                                onCreateBook: isBusy ? null : onCreateBook,
-                                onOpenBook: isBusy ? null : onOpenBook,
-                              ),
-                              const SizedBox(height: 28),
-                              if (errorMessage != null) ...[
-                                _ErrorBanner(message: errorMessage!),
-                                const SizedBox(height: 24),
-                              ],
-                              _QuickActions(
-                                onCreateBook: isBusy ? null : onCreateBook,
-                                onOpenBook: isBusy ? null : onOpenBook,
-                                onImportMarkdown:
-                                    isBusy ? null : onImportMarkdown,
-                              ),
-                              const SizedBox(height: 34),
-                              _RecentSection(
-                                recentProjects: recentProjects,
-                                onOpenRecent: onOpenRecent,
-                                onRemoveRecent: onRemoveRecent,
-                              ),
-                            ],
-                          );
-                        },
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(32, 24, 32, 44),
+                        children: [
+                          _Hero(
+                            onCreateBook: isBusy ? null : onCreateBook,
+                            onOpenBook: isBusy ? null : onOpenBook,
+                          ),
+                          if (errorMessage != null) ...[
+                            const SizedBox(height: 20),
+                            _ErrorBanner(message: errorMessage!),
+                          ],
+                          const SizedBox(height: 24),
+                          _QuickActions(
+                            onCreateBook: isBusy ? null : onCreateBook,
+                            onOpenBook: isBusy ? null : onOpenBook,
+                            onImportMarkdown:
+                                isBusy ? null : onImportMarkdown,
+                          ),
+                          const SizedBox(height: 34),
+                          _RecentSection(
+                            recentProjects: recentProjects,
+                            showPaths: showRecentBookPaths,
+                            onOpenRecent: onOpenRecent,
+                            onRemoveRecent: onRemoveRecent,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -104,27 +93,7 @@ final class WelcomePage extends StatelessWidget {
             Positioned.fill(
               child: ColoredBox(
                 color: scheme.scrim.withValues(alpha: 0.28),
-                child: Center(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 18,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.2),
-                          ),
-                          SizedBox(width: 12),
-                          Text('Opening book...'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                child: const Center(child: CircularProgressIndicator()),
               ),
             ),
         ],
@@ -134,13 +103,9 @@ final class WelcomePage extends StatelessWidget {
 }
 
 final class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.themeMode,
-    required this.onThemeModeChanged,
-  });
+  const _TopBar({required this.onOpenSettings});
 
-  final ThemeMode themeMode;
-  final ValueChanged<ThemeMode> onThemeModeChanged;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -182,68 +147,16 @@ final class _TopBar extends StatelessWidget {
                   color: scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Local-first',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
+                const Text('Local-first'),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          PopupMenuButton<ThemeMode>(
-            tooltip: 'Appearance',
-            initialValue: themeMode,
-            onSelected: onThemeModeChanged,
-            icon: Icon(
-              switch (themeMode) {
-                ThemeMode.light => Icons.light_mode_outlined,
-                ThemeMode.dark => Icons.dark_mode_outlined,
-                ThemeMode.system => Icons.brightness_auto_outlined,
-              },
-            ),
-            itemBuilder: (context) => [
-              _themeMenuItem(
-                mode: ThemeMode.system,
-                current: themeMode,
-                icon: Icons.brightness_auto_outlined,
-                label: 'System',
-              ),
-              _themeMenuItem(
-                mode: ThemeMode.light,
-                current: themeMode,
-                icon: Icons.light_mode_outlined,
-                label: 'Light',
-              ),
-              _themeMenuItem(
-                mode: ThemeMode.dark,
-                current: themeMode,
-                icon: Icons.dark_mode_outlined,
-                label: 'Dark',
-              ),
-            ],
+          IconButton(
+            tooltip: 'App settings',
+            onPressed: onOpenSettings,
+            icon: const Icon(Icons.settings_outlined),
           ),
-        ],
-      ),
-    );
-  }
-
-  PopupMenuItem<ThemeMode> _themeMenuItem({
-    required ThemeMode mode,
-    required ThemeMode current,
-    required IconData icon,
-    required String label,
-  }) {
-    return PopupMenuItem<ThemeMode>(
-      value: mode,
-      child: Row(
-        children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(label)),
-          if (mode == current) const Icon(Icons.check_rounded, size: 18),
         ],
       ),
     );
@@ -251,10 +164,7 @@ final class _TopBar extends StatelessWidget {
 }
 
 final class _Hero extends StatelessWidget {
-  const _Hero({
-    required this.onCreateBook,
-    required this.onOpenBook,
-  });
+  const _Hero({required this.onCreateBook, required this.onOpenBook});
 
   final VoidCallback? onCreateBook;
   final VoidCallback? onOpenBook;
@@ -289,13 +199,7 @@ final class _Hero extends StatelessWidget {
                   color: scheme.primaryContainer,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(
-                  'Markdown publishing workspace',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
+                child: const Text('Markdown publishing workspace'),
               ),
               const SizedBox(height: 18),
               Text(
@@ -306,29 +210,24 @@ final class _Hero extends StatelessWidget {
                     ),
               ),
               const SizedBox(height: 14),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 610),
-                child: Text(
-                  'Build long-form books with chapters, version history, '
-                  'PDF layouts and reflowable EPUB output — all inside one .mdw project.',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
+              Text(
+                'Build long-form books with chapters, version history, PDF layouts and reflowable EPUB output.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
               ),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 10,
-                runSpacing: 10,
                 children: [
                   FilledButton.icon(
                     onPressed: onCreateBook,
-                    icon: const Icon(Icons.add_rounded, size: 19),
+                    icon: const Icon(Icons.add_rounded),
                     label: const Text('New book'),
                   ),
                   OutlinedButton.icon(
                     onPressed: onOpenBook,
-                    icon: const Icon(Icons.folder_open_rounded, size: 19),
+                    icon: const Icon(Icons.folder_open_rounded),
                     label: const Text('Open book'),
                   ),
                 ],
@@ -336,118 +235,34 @@ final class _Hero extends StatelessWidget {
             ],
           );
 
-          final visual = Container(
-            constraints: const BoxConstraints(minHeight: 220),
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: scheme.outlineVariant),
-            ),
-            child: const _BookVisual(),
-          );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                copy,
-                const SizedBox(height: 24),
-                visual,
-              ],
-            );
-          }
+          if (compact) return copy;
 
           return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(flex: 6, child: copy),
               const SizedBox(width: 30),
-              Expanded(flex: 4, child: visual),
+              Expanded(
+                flex: 4,
+                child: Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: scheme.outlineVariant),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.auto_stories_rounded,
+                      size: 74,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ),
+              ),
             ],
           );
         },
       ),
-    );
-  }
-}
-
-final class _BookVisual extends StatelessWidget {
-  const _BookVisual();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    Widget page({required bool front}) {
-      return Container(
-        height: 178,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: scheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: scheme.shadow.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 7),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: front ? 78 : 52,
-              height: 7,
-              decoration: BoxDecoration(
-                color: front ? scheme.primary : scheme.onSurfaceVariant,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(height: 11),
-            for (final width in [0.92, 0.78, 0.86, 0.68]) ...[
-              FractionallySizedBox(
-                widthFactor: width,
-                child: Container(
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: scheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 7),
-            ],
-            const Spacer(),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                front ? 'PDF' : 'EPUB',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(child: page(front: true)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Transform.translate(
-            offset: const Offset(0, 12),
-            child: page(front: false),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -467,34 +282,38 @@ final class _QuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final columns = width >= 900 ? 3 : width >= 620 ? 2 : 1;
-        final gap = 12.0;
-        final cardWidth = (width - (columns - 1) * gap) / columns;
+        final columns = constraints.maxWidth >= 900
+            ? 3
+            : constraints.maxWidth >= 620
+                ? 2
+                : 1;
+        const gap = 12.0;
+        final width =
+            (constraints.maxWidth - (columns - 1) * gap) / columns;
 
         return Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
             _ActionCard(
-              width: cardWidth,
+              width: width,
               icon: Icons.add_rounded,
               title: 'Create book',
-              description: 'Start a new structured .mdw project.',
+              subtitle: 'Start a new structured .mdw project.',
               onTap: onCreateBook,
             ),
             _ActionCard(
-              width: cardWidth,
+              width: width,
               icon: Icons.folder_open_rounded,
               title: 'Open project',
-              description: 'Continue editing an existing Markweft book.',
+              subtitle: 'Continue an existing Markweft book.',
               onTap: onOpenBook,
             ),
             _ActionCard(
-              width: cardWidth,
+              width: width,
               icon: Icons.upload_file_rounded,
               title: 'Import Markdown',
-              description: 'Convert a Markdown manuscript into chapters.',
+              subtitle: 'Convert a Markdown manuscript into a book.',
               onTap: onImportMarkdown,
             ),
           ],
@@ -509,14 +328,14 @@ final class _ActionCard extends StatelessWidget {
     required this.width,
     required this.icon,
     required this.title,
-    required this.description,
+    required this.subtitle,
     required this.onTap,
   });
 
   final double width;
   final IconData icon;
   final String title;
-  final String description;
+  final String subtitle;
   final VoidCallback? onTap;
 
   @override
@@ -532,16 +351,11 @@ final class _ActionCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: scheme.onPrimaryContainer, size: 21),
+                CircleAvatar(
+                  backgroundColor: scheme.primaryContainer,
+                  foregroundColor: scheme.onPrimaryContainer,
+                  child: Icon(icon, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -549,9 +363,9 @@ final class _ActionCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Text(
-                        description,
+                        subtitle,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -559,12 +373,7 @@ final class _ActionCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 18,
-                  color: scheme.onSurfaceVariant,
-                ),
+                const Icon(Icons.arrow_forward_rounded, size: 18),
               ],
             ),
           ),
@@ -577,18 +386,18 @@ final class _ActionCard extends StatelessWidget {
 final class _RecentSection extends StatelessWidget {
   const _RecentSection({
     required this.recentProjects,
+    required this.showPaths,
     required this.onOpenRecent,
     required this.onRemoveRecent,
   });
 
   final List<String> recentProjects;
+  final bool showPaths;
   final ValueChanged<String> onOpenRecent;
   final ValueChanged<String> onRemoveRecent;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -596,121 +405,65 @@ final class _RecentSection extends StatelessWidget {
           children: [
             Text('Recent books', style: Theme.of(context).textTheme.headlineSmall),
             const Spacer(),
-            if (recentProjects.isNotEmpty)
-              Text(
-                '${recentProjects.length} project${recentProjects.length == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-              ),
+            Text('${recentProjects.length} projects'),
           ],
         ),
         const SizedBox(height: 12),
         if (recentProjects.isEmpty)
-          const _EmptyRecentBooks()
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Row(
+                children: [
+                  Icon(Icons.history_rounded),
+                  SizedBox(width: 12),
+                  Text('Your recent books will appear here.'),
+                ],
+              ),
+            ),
+          )
         else
           Card(
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                for (var index = 0; index < recentProjects.length; index++) ...[
-                  _RecentBookTile(
-                    projectPath: recentProjects[index],
-                    onOpen: () => onOpenRecent(recentProjects[index]),
-                    onRemove: () => onRemoveRecent(recentProjects[index]),
+                for (var i = 0; i < recentProjects.length; i++) ...[
+                  ListTile(
+                    leading: const Icon(Icons.menu_book_outlined),
+                    title: Text(
+                      path.basenameWithoutExtension(recentProjects[i]),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: showPaths
+                        ? Text(
+                            recentProjects[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        : null,
+                    onTap: () => onOpenRecent(recentProjects[i]),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Open book',
+                          onPressed: () => onOpenRecent(recentProjects[i]),
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove from recent books',
+                          onPressed: () => onRemoveRecent(recentProjects[i]),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
                   ),
-                  if (index != recentProjects.length - 1)
-                    const Divider(height: 1),
+                  if (i != recentProjects.length - 1) const Divider(height: 1),
                 ],
               ],
             ),
           ),
       ],
-    );
-  }
-}
-
-final class _RecentBookTile extends StatelessWidget {
-  const _RecentBookTile({
-    required this.projectPath,
-    required this.onOpen,
-    required this.onRemove,
-  });
-
-  final String projectPath;
-  final VoidCallback onOpen;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: const Icon(Icons.menu_book_outlined, size: 20),
-      ),
-      title: Text(
-        path.basenameWithoutExtension(projectPath),
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(
-        projectPath,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      onTap: onOpen,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Open book',
-            onPressed: onOpen,
-            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-          ),
-          IconButton(
-            tooltip: 'Remove from recent books',
-            onPressed: onRemove,
-            icon: const Icon(Icons.close_rounded, size: 18),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-final class _EmptyRecentBooks extends StatelessWidget {
-  const _EmptyRecentBooks();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.history_rounded, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Your recent books will appear here.',
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -723,13 +476,11 @@ final class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.errorContainer.withValues(alpha: 0.78),
+        color: scheme.errorContainer,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.error.withValues(alpha: 0.22)),
       ),
       child: Row(
         children: [
