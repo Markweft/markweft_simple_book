@@ -1,0 +1,81 @@
+{
+  "navigation": {
+    "dashboard": "الرئيسية",
+    "tasks": "المهام",
+    "calendar": "التقويم",
+    "more": "المزيد"
+  },
+  "dashboard": {
+    "welcome_back": "مرحباً بعودتك",
+    "user_name": "الكشاف التجريبي",
+    "notifications": "الإشعارات",
+    "upcoming_title": "نشاط قادم",
+    "upcoming_name": "الاجتماع الأسبوعي للفوج",
+    "upcoming_details": "غداً الساعة 5:00 مساءً · مقر الفوج",
+    "quick_access": "وصول سريع",
+    "events": "الأنشطة",
+    "tasks": "المهام",
+    "teams": "الفرق",
+    "members": "الأعضاء",
+    "chants": "الأناشيد",
+    "games": "الألعاب",
+    "inventory": "المخزون",
+    "assignments": "مسؤولياتك",
+    "active_assignment": "المسؤولية الحالية",
+    "no_assignment": "لا توجد مسؤولية مسندة إليك",
+    "no_access": "لا توجد وحدات وصول سريع متاحة ضمن صلاحياتك الحالية.",
+    "no_modules": "لا توجد وحدات متاحة ضمن صلاحياتك الحالية."
+  },
+  "tasks": {
+    "title": "المهام",
+    "subtitle": "تابع المهام والمهام الفرعية",
+    "prepare_meeting": "تحضير الاجتماع الأسبوعي",
+    "prepare_meeting_1": "تأكيد الحضور",
+    "prepare_meeting_2": "تحضير خطة النشاط",
+    "camp_inventory": "مراجعة مخزون المخيم",
+    "camp_inventory_1": "إحصاء الخيم",
+    "camp_inventory_2": "فحص مستلزمات الإسعاف",
+    "done": "مكتملة",
+    "pending": "قيد التنفيذ",
+    "access_denied": "لا تملك صلاحية عرض المهام."
+  },
+  "calendar": {
+    "title": "التقويم",
+    "subtitle": "أنشطة هذا الشهر",
+    "meeting": "اجتماع الفوج",
+    "training": "تدريب قيادي",
+    "camp": "مخيم نهاية الأسبوع",
+    "access_denied": "لا تملك صلاحية عرض الأنشطة."
+  },
+  "more": {
+    "title": "المزيد",
+    "profile": "الملف الشخصي",
+    "notifications": "الإشعارات",
+    "language": "اللغة",
+    "theme": "وضع المظهر",
+    "support": "الدعم",
+    "help": "مركز المساعدة",
+    "meeting_minutes": "محاضر الاجتماعات",
+    "incoming_outgoing": "الصادر والوارد",
+    "inventory": "إدارة المخزون",
+    "activities": "إدارة النشاط",
+    "camps": "إدارة المخيم",
+    "logout": "تسجيل الخروج"
+  },
+  "create": {
+    "tooltip": "إنشاء جديد",
+    "title": "إنشاء جديد",
+    "subtitle": "اختر الإجراء المطلوب",
+    "task": "مهمة جديدة",
+    "event": "نشاط جديد",
+    "member": "عضو جديد",
+    "meeting": "محضر اجتماع",
+    "inventory": "حركة مخزون",
+    "correspondence": "كتاب صادر أو وارد",
+    "no_actions": "لا توجد إجراءات إنشاء متاحة ضمن صلاحياتك الحالية."
+  },
+  "common": {
+    "coming_soon": "قريباً",
+    "access_denied": "لا تملك صلاحية الوصول إلى هذا القسم."
+  }
+}

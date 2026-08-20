@@ -1,0 +1,10 @@
+{
+  "title":"App settings",
+  "appearance":"Appearance",
+  "appearanceDescription":"Choose how Markweft looks on this device.",
+  "themeMode":"Theme mode",
+  "themeModeDescription":"Follow the system or use a fixed appearance.",
+  "languageRegion":"Language & region",
+  "languageRegionDescription":"Set the application interface language.",
+  "appLanguage":"App language",
+  "appLanguageDescription":"System uses the language selected in macOS.","privacyWorkspace":"Privacy & workspace","privacyWorkspaceDescription":"Control what is shown on the welcome screen.","showRecentPaths":"Show recent book paths","showRecentPathsDescription":"Display full local file paths in Recent books.","safety":"Safety","safetyDescription":"Protect destructive actions while editing books.","confirmDestructive":"Confirm destructive actions","confirmDestructiveDescription":"Ask before deleting chapters or history versions.","bookSettingsNote":"Book-specific page, typography and publication settings remain inside each .mdw book."}

@@ -1,0 +1,29 @@
+{
+  "name": "Markweft",
+  "settings": "App settings",
+  "actions": {
+    "done": "Done",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "restore": "Restore",
+    "refresh": "Refresh",
+    "retry": "Retry"
+  },
+  "status": {
+    "loading": "Loading...",
+    "saving": "Saving..."
+  },
+  "alert": {
+    "saved": "Saved",
+    "saveFailed": "Save failed"
+  },
+  "theme_mode": {
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  }
+}
+
+

@@ -1,0 +1,10 @@
+{
+  "title": "Languages",
+  "wait": "Preparing your language...",
+  "locals": {
+    "english":"English",
+    "arabic":"Arabic",
+    "french":"French",
+    "german":"German"
+  }
+}
