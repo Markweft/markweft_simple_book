@@ -11,8 +11,6 @@ abstract interface class BookProjectRepository {
 
   Future<MarkweftProject> openProject(String projectPath);
 
-  Future<String?> pickAndConvertProjectVersion({required int targetVersion});
-
   Future<List<BookChapterFile>> loadChapters(MarkweftProject project);
 
   Future<BookChapterFile> createChapter(
