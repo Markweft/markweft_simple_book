@@ -1,26 +1,45 @@
+# Markweft localization
+#
+# Locale directories live under assets/i18n/<locale>/.
+# Each JSON file is a Slang namespace and may contain nested JSON objects.
+# Example:
+#   assets/i18n/en/editor.i18n.json
+#   assets/i18n/ar/editor.i18n.json
+# becomes:
+#   t.editor.workspace.edit
+
 base_locale: en
 fallback_strategy: base_locale
+
 input_directory: assets/i18n
 input_file_pattern: .i18n.json
+
 output_directory: lib/core/i18n
 output_file_name: translations.g.dart
+output_format: single_file
+
+namespaces: true
 lazy: true
 locale_handling: true
 flutter_integration: true
-namespaces: true
-translate_var: t
+
+generate_enum: true
 enum_name: AppLocale
 class_name: Translations
-translation_class_visibility: private
-key_case: snake
+translation_class_visibility: public
+translate_var: t
+
+# Keep JSON readable and Dart accessors idiomatic.
+key_case: camel
 key_map_case: null
 param_case: camel
-string_interpolation: dart
+string_interpolation: braces
 flat_map: false
 translation_overrides: false
-timestamp: true
+
+# Reproducible generated output in Git/CI.
+timestamp: false
 statistics: true
-generate_enum: true
 
 sanitization:
   enabled: true
@@ -33,13 +52,3 @@ pluralization:
 
 obfuscation:
   enabled: false
-
-format:
-  enabled: true
-  width: 120
-
-autodoc:
-  enabled: true
-  locales:
-    - en
-    - ar
