@@ -1,0 +1,81 @@
+{
+  "workspace": {
+    "modes": {
+      "edit": "Edit",
+      "preview": "Preview"
+    },
+    "markdown": {
+      "title": "Markdown",
+      "chapterTitle": "Markdown · {title}",
+      "chapterOnlyLoaded": "Only this chapter is loaded into the editor.",
+      "writeHint": "Write this chapter in Markdown..."
+    }
+  },
+  "book": {
+    "title": "Book",
+    "close": "Close book",
+    "settings": {
+      "title": "Book settings",
+      "subtitle": "Page, language, typography"
+    },
+    "history": {
+      "title": "Version history",
+      "subtitle": "Recovery, checkpoints, restore"
+    }
+  },
+  "chapters": {
+    "title": "Chapters",
+    "add": "Add chapter",
+    "rename": "Rename",
+    "renameTitle": "Rename chapter",
+    "delete": "Delete chapter",
+    "deleteQuestion": "Delete chapter?",
+    "deleteDescription": "Delete “{title}” and its Markdown file? A history checkpoint will be created first.",
+    "atLeastOne": "A book must contain at least one chapter.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "index": "Chapter {current}/{total}",
+    "number": "Chapter {number}",
+    "defaultFirst": "Chapter One",
+    "loading": "Loading chapter"
+  },
+  "preview": {
+    "format": {
+      "pdf": "PDF",
+      "epub": "EPUB"
+    },
+    "scope": {
+      "chapter": "Chapter",
+      "fullBook": "Full book"
+    },
+    "refreshFullBook": "Refresh full-book preview",
+    "loadFullBookFailed": "Unable to load full-book preview.",
+    "epubReflowable": "EPUB · reflowable preview",
+    "largeChapter": {
+      "title": "Live preview paused for this large chapter",
+      "characters": "{count} characters",
+      "description": "Editing and autosave stay active; preview parsing is paused to keep the UI responsive.",
+      "renderOnce": "Render preview once"
+    }
+  },
+  "export": {
+    "menu": "Export book",
+    "pdf": "Export PDF",
+    "epub": "Export EPUB",
+    "success": "{format} exported to {path}",
+    "failure": "Unable to export {format}: {error}"
+  },
+  "save": {
+    "now": "Save now",
+    "automaticRecovery": "Automatic recovery checkpoint",
+    "beforeDeleting": "Before deleting {title}",
+    "beforeChangingSettings": "Before changing book settings",
+    "errors": {
+      "loadBook": "Unable to load this book: {error}",
+      "saveChapter": "Unable to save this chapter: {error}",
+      "flushProject": "Chapter saved locally, but .mdw update failed: {error}",
+      "openChapter": "Unable to open chapter: {error}",
+      "saveSettings": "Unable to save book settings: {error}"
+    }
+  }
+}
