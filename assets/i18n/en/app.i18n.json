@@ -1,6 +1,7 @@
 {
-  "name": "Markweft",
-  "settings": "App settings",
+  "identity": {
+    "name": "Markweft"
+  },
   "actions": {
     "done": "Done",
     "save": "Save",
@@ -13,17 +14,15 @@
   },
   "status": {
     "loading": "Loading...",
-    "saving": "Saving..."
-  },
-  "alert": {
+    "saving": "Saving...",
     "saved": "Saved",
     "saveFailed": "Save failed"
   },
-  "theme_mode": {
-    "system": "System",
-    "light": "Light",
-    "dark": "Dark"
+  "appearance": {
+    "themeMode": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    }
   }
 }
-
-
