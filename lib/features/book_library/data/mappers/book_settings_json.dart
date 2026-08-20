@@ -15,6 +15,7 @@ final class BookSettingsJson {
       'defaultColumns': settings.defaultColumns,
       'languageCode': settings.languageCode,
       'direction': settings.direction.name,
+      'colorMode': settings.colorMode.name,
       'typography': <String, Object?>{
         'fontFamily': settings.typography.fontFamily,
         'fontSize': settings.typography.fontSize,
@@ -66,6 +67,11 @@ final class BookSettingsJson {
         BookDirection.values,
         decoded['direction'],
         BookDirection.ltr,
+      ),
+      colorMode: _enumValue(
+        BookColorMode.values,
+        decoded['colorMode'],
+        BookColorMode.light,
       ),
       typography: typography,
     );
