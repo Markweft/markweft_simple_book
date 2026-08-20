@@ -23,15 +23,6 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
     _settings = widget.settings;
   }
 
-  Future<void> _previewLanguage(String languageCode) async {
-    if (languageCode == 'system') {
-      LocaleSettings.useDeviceLocale();
-      return;
-    }
-
-    await LocaleSettings.setLocaleRaw(languageCode);
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -60,38 +51,34 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
               _SettingsSection(
                 title: tr.settings.appearance,
                 subtitle: tr.settings.appearanceDescription,
-                child: Column(
-                  children: [
-                    _SettingRow(
-                      icon: Icons.palette_outlined,
-                      title: tr.settings.themeMode,
-                      subtitle: tr.settings.themeModeDescription,
-                      trailing: DropdownButton<ThemeMode>(
-                        value: _settings.themeMode,
-                        underline: const SizedBox.shrink(),
-                        items: [
-                          DropdownMenuItem(
-                            value: ThemeMode.system,
-                            child: Text(tr.app.system),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.light,
-                            child: Text(tr.app.light),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.dark,
-                            child: Text(tr.app.dark),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() {
-                            _settings = _settings.copyWith(themeMode: value);
-                          });
-                        },
+                child: _SettingRow(
+                  icon: Icons.palette_outlined,
+                  title: tr.settings.themeMode,
+                  subtitle: tr.settings.themeModeDescription,
+                  trailing: DropdownButton<ThemeMode>(
+                    value: _settings.themeMode,
+                    underline: const SizedBox.shrink(),
+                    items: [
+                      DropdownMenuItem(
+                        value: ThemeMode.system,
+                        child: Text(tr.app.system),
                       ),
-                    ),
-                  ],
+                      DropdownMenuItem(
+                        value: ThemeMode.light,
+                        child: Text(tr.app.light),
+                      ),
+                      DropdownMenuItem(
+                        value: ThemeMode.dark,
+                        child: Text(tr.app.dark),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _settings = _settings.copyWith(themeMode: value);
+                      });
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -119,12 +106,11 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
                         child: Text(tr.app.arabic),
                       ),
                     ],
-                    onChanged: (value) async {
+                    onChanged: (value) {
                       if (value == null) return;
                       setState(() {
                         _settings = _settings.copyWith(languageCode: value);
                       });
-                      await _previewLanguage(value);
                     },
                   ),
                 ),
@@ -227,7 +213,7 @@ final class _SettingsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+            padding: const EdgeInsetsDirectional.fromSTEB(18, 16, 18, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
