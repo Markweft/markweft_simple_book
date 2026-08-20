@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 import 'package:markweft_simple_book/core/settings/app_settings.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
 
 final class AppSettingsPage extends StatefulWidget {
   const AppSettingsPage({
@@ -30,14 +30,14 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr.settings.title),
+        title: Text(tr.settings.page.title),
         actions: [
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 12),
             child: FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(_settings),
               icon: const Icon(Icons.check_rounded, size: 18),
-              label: Text(tr.app.done),
+              label: Text(tr.app.actions.done),
             ),
           ),
         ],
@@ -49,27 +49,28 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 44),
             children: [
               _SettingsSection(
-                title: tr.settings.appearance,
-                subtitle: tr.settings.appearanceDescription,
+                title: tr.settings.sections.appearance.title,
+                subtitle: tr.settings.sections.appearance.description,
                 child: _SettingRow(
                   icon: Icons.palette_outlined,
-                  title: tr.settings.themeMode,
-                  subtitle: tr.settings.themeModeDescription,
+                  title: tr.settings.sections.appearance.themeMode.title,
+                  subtitle:
+                      tr.settings.sections.appearance.themeMode.description,
                   trailing: DropdownButton<ThemeMode>(
                     value: _settings.themeMode,
                     underline: const SizedBox.shrink(),
                     items: [
                       DropdownMenuItem(
                         value: ThemeMode.system,
-                        child: Text(tr.app.system),
+                        child: Text(tr.app.appearance.themeMode.system),
                       ),
                       DropdownMenuItem(
                         value: ThemeMode.light,
-                        child: Text(tr.app.light),
+                        child: Text(tr.app.appearance.themeMode.light),
                       ),
                       DropdownMenuItem(
                         value: ThemeMode.dark,
-                        child: Text(tr.app.dark),
+                        child: Text(tr.app.appearance.themeMode.dark),
                       ),
                     ],
                     onChanged: (value) {
@@ -83,27 +84,28 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
               ),
               const SizedBox(height: 16),
               _SettingsSection(
-                title: tr.settings.languageRegion,
-                subtitle: tr.settings.languageRegionDescription,
+                title: tr.settings.sections.language.title,
+                subtitle: tr.settings.sections.language.description,
                 child: _SettingRow(
                   icon: Icons.language_rounded,
-                  title: tr.settings.appLanguage,
-                  subtitle: tr.settings.appLanguageDescription,
+                  title: tr.settings.sections.language.appLanguage.title,
+                  subtitle:
+                      tr.settings.sections.language.appLanguage.description,
                   trailing: DropdownButton<String>(
                     value: _settings.languageCode,
                     underline: const SizedBox.shrink(),
                     items: [
                       DropdownMenuItem(
                         value: 'system',
-                        child: Text(tr.app.system),
+                        child: Text(tr.language.locales.system),
                       ),
                       DropdownMenuItem(
                         value: 'en',
-                        child: Text(tr.app.english),
+                        child: Text(tr.language.locales.en),
                       ),
                       DropdownMenuItem(
                         value: 'ar',
-                        child: Text(tr.app.arabic),
+                        child: Text(tr.language.locales.ar),
                       ),
                     ],
                     onChanged: (value) {
@@ -117,12 +119,12 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
               ),
               const SizedBox(height: 16),
               _SettingsSection(
-                title: tr.settings.privacyWorkspace,
-                subtitle: tr.settings.privacyWorkspaceDescription,
+                title: tr.settings.sections.privacy.title,
+                subtitle: tr.settings.sections.privacy.description,
                 child: _SettingRow(
                   icon: Icons.folder_outlined,
-                  title: tr.settings.showRecentPaths,
-                  subtitle: tr.settings.showRecentPathsDescription,
+                  title: tr.settings.sections.privacy.recentPaths.title,
+                  subtitle: tr.settings.sections.privacy.recentPaths.description,
                   trailing: Switch(
                     value: _settings.showRecentBookPaths,
                     onChanged: (value) {
@@ -136,12 +138,14 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
               ),
               const SizedBox(height: 16),
               _SettingsSection(
-                title: tr.settings.safety,
-                subtitle: tr.settings.safetyDescription,
+                title: tr.settings.sections.safety.title,
+                subtitle: tr.settings.sections.safety.description,
                 child: _SettingRow(
                   icon: Icons.shield_outlined,
-                  title: tr.settings.confirmDestructive,
-                  subtitle: tr.settings.confirmDestructiveDescription,
+                  title:
+                      tr.settings.sections.safety.confirmDestructive.title,
+                  subtitle:
+                      tr.settings.sections.safety.confirmDestructive.description,
                   trailing: Switch(
                     value: _settings.confirmDestructiveActions,
                     onChanged: (value) {
