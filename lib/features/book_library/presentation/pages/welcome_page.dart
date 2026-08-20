@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 import 'package:path/path.dart' as path;
 
 final class WelcomePage extends StatelessWidget {
@@ -135,7 +135,10 @@ final class _TopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 11),
-          Text(tr.app.name, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            tr.app.identity.name,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -153,13 +156,13 @@ final class _TopBar extends StatelessWidget {
                   color: scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
-                Text(tr.welcome.localFirst),
+                Text(tr.welcome.topBar.localFirst),
               ],
             ),
           ),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: tr.app.settings,
+            tooltip: tr.welcome.topBar.settingsTooltip,
             onPressed: onOpenSettings,
             icon: const Icon(Icons.settings_outlined),
           ),
@@ -206,11 +209,11 @@ final class _Hero extends StatelessWidget {
                   color: scheme.primaryContainer,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(tr.welcome.workspaceBadge),
+                child: Text(tr.welcome.hero.badge),
               ),
               const SizedBox(height: 18),
               Text(
-                tr.welcome.heroTitle,
+                tr.welcome.hero.title,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontSize: compact ? 38 : 46,
                       height: 1.04,
@@ -218,7 +221,7 @@ final class _Hero extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                tr.welcome.heroDescription,
+                tr.welcome.hero.description,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -231,12 +234,12 @@ final class _Hero extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: onCreateBook,
                     icon: const Icon(Icons.add_rounded),
-                    label: Text(tr.welcome.newBook),
+                    label: Text(tr.welcome.hero.actions.newBook),
                   ),
                   OutlinedButton.icon(
                     onPressed: onOpenBook,
                     icon: const Icon(Icons.folder_open_rounded),
-                    label: Text(tr.welcome.openBook),
+                    label: Text(tr.welcome.hero.actions.openBook),
                   ),
                 ],
               ),
@@ -310,29 +313,29 @@ final class _QuickActions extends StatelessWidget {
             _ActionCard(
               width: width,
               icon: Icons.add_rounded,
-              title: tr.welcome.createBook,
-              subtitle: tr.welcome.createBookDescription,
+              title: tr.welcome.quickActions.create.title,
+              subtitle: tr.welcome.quickActions.create.description,
               onTap: onCreateBook,
             ),
             _ActionCard(
               width: width,
               icon: Icons.folder_open_rounded,
-              title: tr.welcome.openProject,
-              subtitle: tr.welcome.openProjectDescription,
+              title: tr.welcome.quickActions.open.title,
+              subtitle: tr.welcome.quickActions.open.description,
               onTap: onOpenBook,
             ),
             _ActionCard(
               width: width,
               icon: Icons.upload_file_rounded,
-              title: tr.welcome.importMarkdown,
-              subtitle: tr.welcome.importMarkdownDescription,
+              title: tr.welcome.quickActions.importMarkdown.title,
+              subtitle: tr.welcome.quickActions.importMarkdown.description,
               onTap: onImportMarkdown,
             ),
             _ActionCard(
               width: width,
               icon: Icons.swap_horiz_rounded,
-              title: tr.welcome.convertVersion,
-              subtitle: tr.welcome.convertVersionDescription,
+              title: tr.welcome.quickActions.convertVersion.title,
+              subtitle: tr.welcome.quickActions.convertVersion.description,
               onTap: onConvertBookVersion,
             ),
           ],
@@ -425,11 +428,11 @@ final class _RecentSection extends StatelessWidget {
         Row(
           children: [
             Text(
-              tr.welcome.recentBooks,
+              tr.welcome.recent.title,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const Spacer(),
-            Text(tr.welcome.projects(count: recentProjects.length)),
+            Text(tr.welcome.recent.count(count: recentProjects.length)),
           ],
         ),
         const SizedBox(height: 12),
@@ -441,7 +444,7 @@ final class _RecentSection extends StatelessWidget {
                 children: [
                   const Icon(Icons.history_rounded),
                   const SizedBox(width: 12),
-                  Text(tr.welcome.noRecentBooks),
+                  Text(tr.welcome.recent.empty),
                 ],
               ),
             ),
@@ -470,12 +473,12 @@ final class _RecentSection extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: tr.welcome.openRecent,
+                          tooltip: tr.welcome.recent.openTooltip,
                           onPressed: () => onOpenRecent(recentProjects[i]),
                           icon: const Icon(Icons.arrow_forward_rounded),
                         ),
                         IconButton(
-                          tooltip: tr.welcome.removeRecent,
+                          tooltip: tr.welcome.recent.removeTooltip,
                           onPressed: () => onRemoveRecent(recentProjects[i]),
                           icon: const Icon(Icons.close_rounded),
                         ),
