@@ -45,7 +45,7 @@ abstract final class MarkweftTheme {
           letterSpacing: -0.45,
         ),
         titleLarge: textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w650,
+          fontWeight: FontWeight.w600,
           letterSpacing: -0.25,
         ),
         titleMedium: textTheme.titleMedium?.copyWith(
@@ -64,7 +64,7 @@ abstract final class MarkweftTheme {
         titleTextStyle: TextStyle(
           color: scheme.onSurface,
           fontSize: 17,
-          fontWeight: FontWeight.w650,
+          fontWeight: FontWeight.w600,
           letterSpacing: -0.2,
         ),
       ),
