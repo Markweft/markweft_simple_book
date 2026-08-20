@@ -1,10 +1,40 @@
 {
-  "title":"App settings",
-  "appearance":"Appearance",
-  "appearanceDescription":"Choose how Markweft looks on this device.",
-  "themeMode":"Theme mode",
-  "themeModeDescription":"Follow the system or use a fixed appearance.",
-  "languageRegion":"Language & region",
-  "languageRegionDescription":"Set the application interface language.",
-  "appLanguage":"App language",
-  "appLanguageDescription":"System uses the language selected in macOS.","privacyWorkspace":"Privacy & workspace","privacyWorkspaceDescription":"Control what is shown on the welcome screen.","showRecentPaths":"Show recent book paths","showRecentPathsDescription":"Display full local file paths in Recent books.","safety":"Safety","safetyDescription":"Protect destructive actions while editing books.","confirmDestructive":"Confirm destructive actions","confirmDestructiveDescription":"Ask before deleting chapters or history versions.","bookSettingsNote":"Book-specific page, typography and publication settings remain inside each .mdw book."}
+  "page": {
+    "title": "App settings"
+  },
+  "sections": {
+    "appearance": {
+      "title": "Appearance",
+      "description": "Choose how Markweft looks on this device.",
+      "themeMode": {
+        "title": "Theme mode",
+        "description": "Follow the system or use a fixed appearance."
+      }
+    },
+    "language": {
+      "title": "Language & region",
+      "description": "Set the application interface language.",
+      "appLanguage": {
+        "title": "App language",
+        "description": "System uses the language selected in macOS."
+      }
+    },
+    "privacy": {
+      "title": "Privacy & workspace",
+      "description": "Control what is shown on the welcome screen.",
+      "recentPaths": {
+        "title": "Show recent book paths",
+        "description": "Display full local file paths in Recent books."
+      }
+    },
+    "safety": {
+      "title": "Safety",
+      "description": "Protect destructive actions while editing books.",
+      "confirmDestructive": {
+        "title": "Confirm destructive actions",
+        "description": "Ask before deleting chapters or history versions."
+      }
+    }
+  },
+  "bookSettingsNote": "Book-specific page, typography and publication settings remain inside each .mdw book."
+}
