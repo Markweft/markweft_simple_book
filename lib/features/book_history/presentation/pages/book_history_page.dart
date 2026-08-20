@@ -4,6 +4,7 @@ import 'package:markweft_simple_book/features/book_history/data/services/book_hi
 import 'package:markweft_simple_book/features/book_history/domain/entities/book_version.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
+import 'package:markweft_simple_book/i18n/strings.g.dart';
 
 final class BookHistoryPage extends StatefulWidget {
   const BookHistoryPage({
@@ -52,27 +53,28 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
 
   Future<void> _createManualVersion() async {
     final controller = TextEditingController();
+    final tr = Translations.of(context);
     final message = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create version'),
+        title: Text(tr.history.createVersion),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Description',
-            hintText: 'Before rewriting chapter 4',
+          decoration: InputDecoration(
+            labelText: tr.history.description,
+            hintText: tr.history.descriptionHint,
           ),
           onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(tr.app.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Create'),
+            child: Text(tr.dialogs.create),
           ),
         ],
       ),
@@ -85,7 +87,7 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
         project: widget.project,
         repository: widget.repository,
         reason: 'manual',
-        message: message.isEmpty ? 'Manual version' : message,
+        message: message.isEmpty ? tr.history.manualVersion : message,
       );
       await widget.repository.flushProject(widget.project);
       await _load();
@@ -93,22 +95,22 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
   }
 
   Future<void> _restore(BookVersion version) async {
+    final tr = Translations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Restore this version?'),
+        title: Text(tr.history.restoreQuestion),
         content: Text(
-          'The current book state will be saved automatically before restoring '
-          '${_formatDate(version.createdAt)}.',
+          tr.history.restoreDescription(date: _formatDate(version.createdAt)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(tr.app.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Restore'),
+            child: Text(tr.app.restore),
           ),
         ],
       ),
@@ -127,20 +129,21 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
   }
 
   Future<void> _delete(BookVersion version) async {
+    final tr = Translations.of(context);
     if (version.isManual) {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Delete manual version?'),
-          content: const Text('This removes the checkpoint from the history list.'),
+          title: Text(tr.history.deleteManualQuestion),
+          content: Text(tr.history.deleteManualDescription),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(tr.app.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(tr.app.delete),
             ),
           ],
         ),
@@ -173,14 +176,16 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Version history'),
+        title: Text(tr.history.title),
         actions: [
           FilledButton.icon(
             onPressed: _busy ? null : _createManualVersion,
             icon: const Icon(Icons.add),
-            label: const Text('Create version'),
+            label: Text(tr.history.createVersion),
           ),
           const SizedBox(width: 16),
         ],
@@ -192,18 +197,20 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
               content: Text(_error!),
               leading: const Icon(Icons.error_outline),
               actions: [
-                TextButton(onPressed: _load, child: const Text('Retry')),
+                TextButton(onPressed: _load, child: Text(tr.app.retry)),
               ],
             ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _versions.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No versions yet. Create a manual version or keep editing; '
-                          'recovery checkpoints are created automatically.',
-                          textAlign: TextAlign.center,
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            tr.history.empty,
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       )
                     : ListView.separated(
@@ -212,6 +219,9 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final version = _versions[index];
+                          final chapters = tr.history.chaptersCount(
+                            count: version.chapters.length,
+                          );
                           return ListTile(
                             leading: Icon(
                               version.isManual
@@ -220,13 +230,15 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
                             ),
                             title: Text(
                               version.message.isEmpty
-                                  ? _reasonLabel(version.reason)
+                                  ? _reasonLabel(version.reason, tr)
                                   : version.message,
                             ),
                             subtitle: Text(
-                              '${_formatDate(version.createdAt)} · '
-                              '${version.chapters.length} chapters · '
-                              '${_reasonLabel(version.reason)}',
+                              tr.history.metadata(
+                                date: _formatDate(version.createdAt),
+                                chapters: chapters,
+                                reason: _reasonLabel(version.reason, tr),
+                              ),
                             ),
                             trailing: PopupMenuButton<String>(
                               enabled: !_busy,
@@ -237,14 +249,14 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
                                   _delete(version);
                                 }
                               },
-                              itemBuilder: (_) => const [
+                              itemBuilder: (_) => [
                                 PopupMenuItem(
                                   value: 'restore',
-                                  child: Text('Restore'),
+                                  child: Text(tr.app.restore),
                                 ),
                                 PopupMenuItem(
                                   value: 'delete',
-                                  child: Text('Delete'),
+                                  child: Text(tr.app.delete),
                                 ),
                               ],
                             ),
@@ -258,15 +270,16 @@ final class _BookHistoryPageState extends State<BookHistoryPage> {
   }
 
   String _formatDate(DateTime value) {
-    return DateFormat('yyyy-MM-dd HH:mm').format(value.toLocal());
+    final locale = TranslationProvider.of(context).flutterLocale.toLanguageTag();
+    return DateFormat.yMd(locale).add_Hm().format(value.toLocal());
   }
 
-  String _reasonLabel(String reason) => switch (reason) {
-        'manual' => 'Manual',
-        'recovery' => 'Recovery',
-        'beforeDelete' => 'Before delete',
-        'beforeRestore' => 'Before restore',
-        'settingsChanged' => 'Settings changed',
+  String _reasonLabel(String reason, Translations tr) => switch (reason) {
+        'manual' => tr.history.manual,
+        'recovery' => tr.history.recovery,
+        'beforeDelete' => tr.history.beforeDelete,
+        'beforeRestore' => tr.history.beforeRestore,
+        'settingsChanged' => tr.history.settingsChanged,
         _ => reason,
       };
 }
