@@ -36,6 +36,92 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
     final typography = tr.bookSettings.sections.typography;
     final toc = tr.bookSettings.sections.toc;
 
+    final documentFields = <Widget>[];
+    if (descriptor.supportsSetting(TemplateBookSetting.pageSize)) {
+      documentFields.add(
+        DropdownButtonFormField<BookPageSize>(
+          initialValue: _settings.pageSize,
+          decoration: InputDecoration(labelText: document.pageSize),
+          items: [
+            for (final size in BookPageSize.values)
+              DropdownMenuItem(
+                value: size,
+                child: Text(size.name.toUpperCase()),
+              ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _settings = _settings.copyWith(pageSize: value));
+          },
+        ),
+      );
+    }
+    if (descriptor.supportsSetting(TemplateBookSetting.orientation)) {
+      documentFields.add(
+        DropdownButtonFormField<BookPageOrientation>(
+          initialValue: _settings.orientation,
+          decoration: InputDecoration(labelText: document.orientation),
+          items: [
+            DropdownMenuItem(
+              value: BookPageOrientation.portrait,
+              child: Text(document.orientationValues.portrait),
+            ),
+            DropdownMenuItem(
+              value: BookPageOrientation.landscape,
+              child: Text(document.orientationValues.landscape),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _settings = _settings.copyWith(orientation: value));
+          },
+        ),
+      );
+    }
+    if (descriptor.supportsSetting(TemplateBookSetting.margin)) {
+      documentFields.add(
+        _DoubleDropdown(
+          label: document.pageMargin,
+          value: _settings.margin,
+          values: const [12, 18, 24, 30, 36, 48, 60],
+          onChanged: (value) => setState(
+            () => _settings = _settings.copyWith(margin: value),
+          ),
+        ),
+      );
+    }
+    if (descriptor.supportsSetting(TemplateBookSetting.contentPadding)) {
+      documentFields.add(
+        _DoubleDropdown(
+          label: document.contentPadding,
+          value: _settings.contentPadding,
+          values: const [0, 8, 12, 18, 24, 36, 48],
+          onChanged: (value) => setState(
+            () => _settings = _settings.copyWith(contentPadding: value),
+          ),
+        ),
+      );
+    }
+    if (descriptor.supportsSetting(TemplateBookSetting.columns)) {
+      documentFields.add(
+        DropdownButtonFormField<int>(
+          initialValue: _settings.defaultColumns,
+          decoration: InputDecoration(
+            labelText: document.columns.title,
+            helperText: document.columns.helper,
+          ),
+          items: [
+            for (final value in descriptor.supportedColumns)
+              DropdownMenuItem(value: value, child: Text('$value')),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _settings = _settings.copyWith(defaultColumns: value));
+          },
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(tr.bookSettings.page.title),
@@ -80,8 +166,11 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                       setState(() {
                         _settings = _settings.copyWith(
                           templateId: value,
-                          defaultColumns:
-                              next.supportedColumns.contains(_settings.defaultColumns)
+                          defaultColumns: next.supportedColumns.isEmpty
+                              ? 1
+                              : next.supportedColumns.contains(
+                                      _settings.defaultColumns,
+                                    )
                                   ? _settings.defaultColumns
                                   : next.supportedColumns.first,
                         );
@@ -92,271 +181,262 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text('${document.platforms}:'),
                       if (descriptor.supportsPdf)
                         Chip(
-                          avatar: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                          avatar: const Icon(
+                            Icons.picture_as_pdf_outlined,
+                            size: 16,
+                          ),
                           label: Text(document.pdf),
                         ),
                       if (descriptor.supportsEpub)
                         Chip(
-                          avatar: const Icon(Icons.menu_book_outlined, size: 16),
+                          avatar: const Icon(
+                            Icons.menu_book_outlined,
+                            size: 16,
+                          ),
                           label: Text(document.epub),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  _TwoColumns(
-                    first: DropdownButtonFormField<BookPageSize>(
-                      initialValue: _settings.pageSize,
-                      decoration: InputDecoration(labelText: document.pageSize),
-                      items: [
-                        for (final size in BookPageSize.values)
-                          DropdownMenuItem(
-                            value: size,
-                            child: Text(size.name.toUpperCase()),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _settings = _settings.copyWith(pageSize: value));
-                      },
-                    ),
-                    second: DropdownButtonFormField<BookPageOrientation>(
-                      initialValue: _settings.orientation,
-                      decoration: InputDecoration(labelText: document.orientation),
-                      items: [
-                        DropdownMenuItem(
-                          value: BookPageOrientation.portrait,
-                          child: Text(document.orientationValues.portrait),
-                        ),
-                        DropdownMenuItem(
-                          value: BookPageOrientation.landscape,
-                          child: Text(document.orientationValues.landscape),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _settings = _settings.copyWith(orientation: value));
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _TwoColumns(
-                    first: _DoubleDropdown(
-                      label: document.pageMargin,
-                      value: _settings.margin,
-                      values: const [12, 18, 24, 30, 36, 48, 60],
-                      onChanged: (value) => setState(
-                        () => _settings = _settings.copyWith(margin: value),
-                      ),
-                    ),
-                    second: _DoubleDropdown(
-                      label: document.contentPadding,
-                      value: _settings.contentPadding,
-                      values: const [0, 8, 12, 18, 24, 36, 48],
-                      onChanged: (value) => setState(
-                        () => _settings = _settings.copyWith(contentPadding: value),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    initialValue: _settings.defaultColumns,
-                    decoration: InputDecoration(
-                      labelText: document.columns.title,
-                      helperText: document.columns.helper,
-                    ),
-                    items: [
-                      for (final value in descriptor.supportedColumns)
-                        DropdownMenuItem(value: value, child: Text('$value')),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _settings = _settings.copyWith(defaultColumns: value));
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _SettingsSection(
-                title: appearance.title,
-                icon: Icons.contrast_rounded,
-                children: [
-                  DropdownButtonFormField<BookColorMode>(
-                    initialValue: _settings.colorMode,
-                    decoration: InputDecoration(
-                      labelText: appearance.colorMode,
-                      helperText: appearance.description,
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: BookColorMode.light,
-                        child: Text(appearance.light),
-                      ),
-                      DropdownMenuItem(
-                        value: BookColorMode.dark,
-                        child: Text(appearance.dark),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _settings = _settings.copyWith(colorMode: value));
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _SettingsSection(
-                title: language.title,
-                icon: Icons.language_outlined,
-                children: [
-                  _TwoColumns(
-                    first: DropdownButtonFormField<String>(
-                      initialValue: _settings.languageCode,
-                      decoration: InputDecoration(labelText: language.bookLanguage),
-                      items: [
-                        DropdownMenuItem(value: 'en', child: Text(tr.language.locales.en)),
-                        DropdownMenuItem(value: 'ar', child: Text(tr.language.locales.ar)),
-                        DropdownMenuItem(value: 'fr', child: Text(tr.language.locales.fr)),
-                        DropdownMenuItem(value: 'de', child: Text(tr.language.locales.de)),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            languageCode: value,
-                            direction: value == 'ar'
-                                ? BookDirection.rtl
-                                : BookDirection.ltr,
-                          );
-                        });
-                      },
-                    ),
-                    second: DropdownButtonFormField<BookDirection>(
-                      initialValue: _settings.direction,
-                      decoration: InputDecoration(labelText: language.direction),
-                      items: [
-                        DropdownMenuItem(
-                          value: BookDirection.ltr,
-                          child: Text(language.directionValues.ltr),
-                        ),
-                        DropdownMenuItem(
-                          value: BookDirection.rtl,
-                          child: Text(language.directionValues.rtl),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _settings = _settings.copyWith(direction: value));
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _TypographySection(
-                settings: _settings,
-                labels: typography,
-                onChanged: (value) => setState(() => _settings = value),
-              ),
-              const SizedBox(height: 20),
-              _SettingsSection(
-                title: toc.title,
-                icon: Icons.toc_rounded,
-                children: [
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    value: _settings.tableOfContents.enabled,
-                    title: Text(toc.enabled),
-                    onChanged: (value) {
-                      setState(() {
-                        _settings = _settings.copyWith(
-                          tableOfContents:
-                              _settings.tableOfContents.copyWith(enabled: value),
-                        );
-                      });
-                    },
-                  ),
-                  if (_settings.tableOfContents.enabled) ...[
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      initialValue: _settings.tableOfContents.title,
-                      decoration: InputDecoration(labelText: toc.pageTitle),
-                      onChanged: (value) {
-                        _settings = _settings.copyWith(
-                          tableOfContents:
-                              _settings.tableOfContents.copyWith(title: value),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      initialValue: _settings.tableOfContents.maxDepth,
-                      decoration: InputDecoration(labelText: toc.maxDepth),
-                      items: [
-                        for (var depth = 1; depth <= 6; depth++)
-                          DropdownMenuItem(value: depth, child: Text('$depth')),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            tableOfContents:
-                                _settings.tableOfContents.copyWith(maxDepth: value),
-                          );
-                        });
-                      },
-                    ),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: _settings.tableOfContents.startOnNewPage,
-                      title: Text(toc.startOnNewPage),
-                      onChanged: (value) {
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            tableOfContents: _settings.tableOfContents
-                                .copyWith(startOnNewPage: value),
-                          );
-                        });
-                      },
-                    ),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: _settings.tableOfContents.includePageNumbers,
-                      title: Text(toc.pageNumbers),
-                      subtitle: Text(toc.pageNumbersHint),
-                      onChanged: (value) {
-                        setState(() {
-                          _settings = _settings.copyWith(
-                            tableOfContents: _settings.tableOfContents
-                                .copyWith(includePageNumbers: value),
-                          );
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _previewToc,
-                      icon: const Icon(Icons.visibility_outlined),
-                      label: Text(toc.preview),
-                    ),
+                  if (documentFields.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    _ResponsiveFields(children: documentFields),
                   ],
                 ],
               ),
-              const SizedBox(height: 20),
-              _SettingsSection(
-                title: tr.bookSettings.sections.templateBehavior.title,
-                icon: Icons.auto_awesome_outlined,
-                children: [
-                  Text(
-                    tr.bookSettings.sections.templateBehavior.chapterOpeningLayout(
-                      layout: descriptor.chapterLayouts.first,
+              if (descriptor.supportsSetting(TemplateBookSetting.colorMode)) ...[
+                const SizedBox(height: 20),
+                _SettingsSection(
+                  title: appearance.title,
+                  icon: Icons.contrast_rounded,
+                  children: [
+                    DropdownButtonFormField<BookColorMode>(
+                      initialValue: _settings.colorMode,
+                      decoration: InputDecoration(
+                        labelText: appearance.colorMode,
+                        helperText: appearance.description,
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: BookColorMode.light,
+                          child: Text(appearance.light),
+                        ),
+                        DropdownMenuItem(
+                          value: BookColorMode.dark,
+                          child: Text(appearance.dark),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(
+                          () => _settings = _settings.copyWith(colorMode: value),
+                        );
+                      },
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
+              if (descriptor.supportsSetting(TemplateBookSetting.language) ||
+                  descriptor.supportsSetting(TemplateBookSetting.direction)) ...[
+                const SizedBox(height: 20),
+                _SettingsSection(
+                  title: language.title,
+                  icon: Icons.language_outlined,
+                  children: [
+                    _ResponsiveFields(
+                      children: [
+                        if (descriptor.supportsSetting(
+                          TemplateBookSetting.language,
+                        ))
+                          DropdownButtonFormField<String>(
+                            initialValue: _settings.languageCode,
+                            decoration: InputDecoration(
+                              labelText: language.bookLanguage,
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: 'en',
+                                child: Text(tr.language.locales.en),
+                              ),
+                              DropdownMenuItem(
+                                value: 'ar',
+                                child: Text(tr.language.locales.ar),
+                              ),
+                              DropdownMenuItem(
+                                value: 'fr',
+                                child: Text(tr.language.locales.fr),
+                              ),
+                              DropdownMenuItem(
+                                value: 'de',
+                                child: Text(tr.language.locales.de),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _settings = _settings.copyWith(
+                                  languageCode: value,
+                                  direction: value == 'ar'
+                                      ? BookDirection.rtl
+                                      : BookDirection.ltr,
+                                );
+                              });
+                            },
+                          ),
+                        if (descriptor.supportsSetting(
+                          TemplateBookSetting.direction,
+                        ))
+                          DropdownButtonFormField<BookDirection>(
+                            initialValue: _settings.direction,
+                            decoration: InputDecoration(
+                              labelText: language.direction,
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: BookDirection.ltr,
+                                child: Text(language.directionValues.ltr),
+                              ),
+                              DropdownMenuItem(
+                                value: BookDirection.rtl,
+                                child: Text(language.directionValues.rtl),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(
+                                () => _settings =
+                                    _settings.copyWith(direction: value),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+              if (descriptor.supportsSetting(TemplateBookSetting.typography)) ...[
+                const SizedBox(height: 20),
+                _TypographySection(
+                  settings: _settings,
+                  labels: typography,
+                  onChanged: (value) => setState(() => _settings = value),
+                ),
+              ],
+              if (descriptor.supportsSetting(
+                TemplateBookSetting.tableOfContents,
+              )) ...[
+                const SizedBox(height: 20),
+                _SettingsSection(
+                  title: toc.title,
+                  icon: Icons.toc_rounded,
+                  children: [
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      value: _settings.tableOfContents.enabled,
+                      title: Text(toc.enabled),
+                      onChanged: (value) {
+                        setState(() {
+                          _settings = _settings.copyWith(
+                            tableOfContents: _settings.tableOfContents.copyWith(
+                              enabled: value,
+                            ),
+                          );
+                        });
+                      },
+                    ),
+                    if (_settings.tableOfContents.enabled) ...[
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        initialValue: _settings.tableOfContents.title,
+                        decoration: InputDecoration(labelText: toc.pageTitle),
+                        onChanged: (value) {
+                          _settings = _settings.copyWith(
+                            tableOfContents: _settings.tableOfContents.copyWith(
+                              title: value,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<int>(
+                        initialValue: _settings.tableOfContents.maxDepth,
+                        decoration: InputDecoration(labelText: toc.maxDepth),
+                        items: [
+                          for (var depth = 1; depth <= 6; depth++)
+                            DropdownMenuItem(
+                              value: depth,
+                              child: Text('$depth'),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _settings = _settings.copyWith(
+                              tableOfContents: _settings.tableOfContents.copyWith(
+                                maxDepth: value,
+                              ),
+                            );
+                          });
+                        },
+                      ),
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        value: _settings.tableOfContents.startOnNewPage,
+                        title: Text(toc.startOnNewPage),
+                        onChanged: (value) {
+                          setState(() {
+                            _settings = _settings.copyWith(
+                              tableOfContents: _settings.tableOfContents.copyWith(
+                                startOnNewPage: value,
+                              ),
+                            );
+                          });
+                        },
+                      ),
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        value: _settings.tableOfContents.includePageNumbers,
+                        title: Text(toc.pageNumbers),
+                        subtitle: Text(toc.pageNumbersHint),
+                        onChanged: (value) {
+                          setState(() {
+                            _settings = _settings.copyWith(
+                              tableOfContents: _settings.tableOfContents.copyWith(
+                                includePageNumbers: value,
+                              ),
+                            );
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _previewToc,
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: Text(toc.preview),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+              if (descriptor.chapterLayouts.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                _SettingsSection(
+                  title: tr.bookSettings.sections.templateBehavior.title,
+                  icon: Icons.auto_awesome_outlined,
+                  children: [
+                    Text(
+                      tr.bookSettings.sections.templateBehavior
+                          .chapterOpeningLayout(
+                        layout: descriptor.chapterLayouts.first,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -384,7 +464,9 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
       builder: (context) => Dialog.fullscreen(
         child: Scaffold(
           appBar: AppBar(
-            title: Text(Translations.of(context).bookSettings.sections.toc.preview),
+            title: Text(
+              Translations.of(context).bookSettings.sections.toc.preview,
+            ),
             leading: IconButton(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.close_rounded),
@@ -419,8 +501,14 @@ final class _TypographySection extends StatelessWidget {
           initialValue: typography.fontFamily ?? 'system',
           decoration: InputDecoration(labelText: labels.fontFamily as String),
           items: [
-            DropdownMenuItem(value: 'system', child: Text(labels.fontFamilies.system)),
-            DropdownMenuItem(value: 'serif', child: Text(labels.fontFamilies.serif)),
+            DropdownMenuItem(
+              value: 'system',
+              child: Text(labels.fontFamilies.system),
+            ),
+            DropdownMenuItem(
+              value: 'serif',
+              child: Text(labels.fontFamilies.serif),
+            ),
             DropdownMenuItem(
               value: 'sans-serif',
               child: Text(labels.fontFamilies.sansSerif),
@@ -443,80 +531,88 @@ final class _TypographySection extends StatelessWidget {
           },
         ),
         const SizedBox(height: 16),
-        _TwoColumns(
-          first: _DoubleDropdown(
-            label: labels.fontSize as String,
-            value: typography.fontSize,
-            values: const [10, 11, 12, 13, 14, 16, 18, 20],
-            onChanged: (value) => onChanged(
-              settings.copyWith(
-                typography: typography.copyWith(fontSize: value),
+        _ResponsiveFields(
+          children: [
+            _DoubleDropdown(
+              label: labels.fontSize as String,
+              value: typography.fontSize,
+              values: const [10, 11, 12, 13, 14, 16, 18, 20],
+              onChanged: (value) => onChanged(
+                settings.copyWith(
+                  typography: typography.copyWith(fontSize: value),
+                ),
               ),
             ),
-          ),
-          second: DropdownButtonFormField<int>(
-            initialValue: typography.fontWeight,
-            decoration: InputDecoration(labelText: labels.fontWeight as String),
-            items: const [300, 400, 500, 600, 700]
-                .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
-                .toList(),
-            onChanged: (value) {
-              if (value == null) return;
-              onChanged(
+            DropdownButtonFormField<int>(
+              initialValue: typography.fontWeight,
+              decoration: InputDecoration(
+                labelText: labels.fontWeight as String,
+              ),
+              items: const [300, 400, 500, 600, 700]
+                  .map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text('$value'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                onChanged(
+                  settings.copyWith(
+                    typography: typography.copyWith(fontWeight: value),
+                  ),
+                );
+              },
+            ),
+            _DoubleDropdown(
+              label: labels.lineHeight as String,
+              value: typography.lineHeight,
+              values: const [1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0],
+              suffix: '',
+              onChanged: (value) => onChanged(
                 settings.copyWith(
-                  typography: typography.copyWith(fontWeight: value),
+                  typography: typography.copyWith(lineHeight: value),
                 ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 16),
-        _TwoColumns(
-          first: _DoubleDropdown(
-            label: labels.lineHeight as String,
-            value: typography.lineHeight,
-            values: const [1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0],
-            suffix: '',
-            onChanged: (value) => onChanged(
-              settings.copyWith(
-                typography: typography.copyWith(lineHeight: value),
               ),
             ),
-          ),
-          second: DropdownButtonFormField<BookTextAlignment>(
-            initialValue: typography.alignment,
-            decoration: InputDecoration(labelText: labels.alignment as String),
-            items: [
-              DropdownMenuItem(
-                value: BookTextAlignment.start,
-                child: Text(labels.alignmentValues.start),
+            DropdownButtonFormField<BookTextAlignment>(
+              initialValue: typography.alignment,
+              decoration: InputDecoration(
+                labelText: labels.alignment as String,
               ),
-              DropdownMenuItem(
-                value: BookTextAlignment.left,
-                child: Text(labels.alignmentValues.left),
-              ),
-              DropdownMenuItem(
-                value: BookTextAlignment.center,
-                child: Text(labels.alignmentValues.center),
-              ),
-              DropdownMenuItem(
-                value: BookTextAlignment.right,
-                child: Text(labels.alignmentValues.right),
-              ),
-              DropdownMenuItem(
-                value: BookTextAlignment.justify,
-                child: Text(labels.alignmentValues.justify),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              onChanged(
-                settings.copyWith(
-                  typography: typography.copyWith(alignment: value),
+              items: [
+                DropdownMenuItem(
+                  value: BookTextAlignment.start,
+                  child: Text(labels.alignmentValues.start),
                 ),
-              );
-            },
-          ),
+                DropdownMenuItem(
+                  value: BookTextAlignment.left,
+                  child: Text(labels.alignmentValues.left),
+                ),
+                DropdownMenuItem(
+                  value: BookTextAlignment.center,
+                  child: Text(labels.alignmentValues.center),
+                ),
+                DropdownMenuItem(
+                  value: BookTextAlignment.right,
+                  child: Text(labels.alignmentValues.right),
+                ),
+                DropdownMenuItem(
+                  value: BookTextAlignment.justify,
+                  child: Text(labels.alignmentValues.justify),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                onChanged(
+                  settings.copyWith(
+                    typography: typography.copyWith(alignment: value),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ],
     );
@@ -559,30 +655,24 @@ final class _SettingsSection extends StatelessWidget {
   }
 }
 
-final class _TwoColumns extends StatelessWidget {
-  const _TwoColumns({required this.first, required this.second});
+final class _ResponsiveFields extends StatelessWidget {
+  const _ResponsiveFields({required this.children});
 
-  final Widget first;
-  final Widget second;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 620) {
-          return Column(
-            children: [
-              first,
-              const SizedBox(height: 16),
-              second,
-            ],
-          );
-        }
-        return Row(
+        final width = constraints.maxWidth >= 620
+            ? (constraints.maxWidth - 16) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
           children: [
-            Expanded(child: first),
-            const SizedBox(width: 16),
-            Expanded(child: second),
+            for (final child in children)
+              SizedBox(width: width, child: child),
           ],
         );
       },
