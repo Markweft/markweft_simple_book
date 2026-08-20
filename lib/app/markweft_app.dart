@@ -36,6 +36,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   MarkweftProject? _activeProject;
   String? _activeSecurityScopedPath;
   List<String> _recentProjects = const <String>[];
+  Map<String, int?> _recentProjectVersions = const <String, int?>{};
   AppSettings _appSettings = const AppSettings();
   bool _isBusy = false;
   String? _errorMessage;
@@ -85,8 +86,36 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
   Future<void> _loadRecentProjects() async {
     final recentProjects = await _recentProjectsStore.load();
+    final versions = <String, int?>{};
+
+    for (final projectPath in recentProjects) {
+      versions[projectPath] = await _inspectRecentVersion(projectPath);
+    }
+
     if (!mounted) return;
-    setState(() => _recentProjects = recentProjects);
+    setState(() {
+      _recentProjects = recentProjects;
+      _recentProjectVersions = versions;
+    });
+  }
+
+  Future<int?> _inspectRecentVersion(String projectPath) async {
+    try {
+      if (!Platform.isMacOS) {
+        return _versionConverter.inspectVersion(projectPath);
+      }
+
+      final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
+      if (bookmark == null) return null;
+      final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
+      try {
+        return await _versionConverter.inspectVersion(resolvedPath);
+      } finally {
+        await _bookmarkService.stopAccessing(resolvedPath);
+      }
+    } on Object {
+      return null;
+    }
   }
 
   Future<void> _createProject() async {
@@ -111,12 +140,9 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     );
   }
 
-  Future<void> _convertBookVersion() async {
-    final context = _navigatorKey.currentContext;
-    if (context == null) return;
-
+  Future<int?> _chooseTargetVersion(BuildContext context) {
     final tr = Translations.of(context);
-    final targetVersion = await showDialog<int>(
+    return showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(tr.welcome.conversion.dialog.title),
@@ -131,34 +157,161 @@ final class _MarkweftAppState extends State<MarkweftApp> {
             child: Text(tr.welcome.conversion.dialog.toV1),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(3),
+            onPressed: () => Navigator.of(context).pop(
+              MdwVersionConverter.currentVersion,
+            ),
             child: Text(tr.welcome.conversion.dialog.toV3),
           ),
         ],
       ),
     );
-    if (targetVersion == null) return;
+  }
+
+  Future<_ConversionChoice?> _chooseConversionMode(BuildContext context) {
+    var mode = MdwConversionMode.saveCopy;
+    var openAfter = true;
+    final tr = Translations.of(context);
+
+    return showDialog<_ConversionChoice>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(tr.welcome.conversion.dialog.storageTitle),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<MdwConversionMode>(
+                  value: MdwConversionMode.replaceSource,
+                  groupValue: mode,
+                  title: Text(tr.welcome.conversion.dialog.sameFile),
+                  subtitle: Text(
+                    tr.welcome.conversion.dialog.sameFileDescription,
+                  ),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() => mode = value);
+                  },
+                ),
+                RadioListTile<MdwConversionMode>(
+                  value: MdwConversionMode.saveCopy,
+                  groupValue: mode,
+                  title: Text(tr.welcome.conversion.dialog.saveCopy),
+                  subtitle: Text(
+                    tr.welcome.conversion.dialog.saveCopyDescription,
+                  ),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() => mode = value);
+                  },
+                ),
+                const Divider(),
+                CheckboxListTile(
+                  value: openAfter,
+                  title: Text(tr.welcome.conversion.dialog.openAfter),
+                  subtitle: Text(
+                    tr.welcome.conversion.dialog.openAfterDescription,
+                  ),
+                  onChanged: (value) {
+                    setDialogState(() => openAfter = value ?? true);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(tr.app.actions.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(
+                _ConversionChoice(mode: mode, openAfter: openAfter),
+              ),
+              child: Text(tr.welcome.quickActions.convertVersion.title),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _convertBookVersion({
+    String? sourcePath,
+    int? targetVersion,
+  }) async {
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+
+    final target = targetVersion ?? await _chooseTargetVersion(context);
+    if (target == null) return;
+    final choice = await _chooseConversionMode(context);
+    if (choice == null) return;
 
     setState(() {
       _isBusy = true;
       _errorMessage = null;
     });
 
+    String? scopedPath;
     try {
-      final output = await _versionConverter.pickAndConvert(
-        targetVersion: targetVersion,
-      );
-      if (output == null || !mounted) return;
+      MdwConversionResult? result;
+      if (sourcePath == null) {
+        result = await _versionConverter.pickAndConvert(
+          targetVersion: target,
+          mode: choice.mode,
+        );
+      } else {
+        var accessiblePath = sourcePath;
+        if (Platform.isMacOS) {
+          final bookmark = await _recentProjectsStore.bookmarkFor(sourcePath);
+          if (bookmark != null) {
+            scopedPath = await _bookmarkService.resolveBookmark(bookmark);
+            accessiblePath = scopedPath;
+          }
+        }
+        result = await _versionConverter.convertPath(
+          sourcePath: accessiblePath,
+          targetVersion: target,
+          mode: choice.mode,
+        );
+      }
 
+      if (result == null || !mounted) return;
+
+      String? bookmark;
+      try {
+        bookmark = await _bookmarkService.createBookmark(result.outputPath);
+      } on Object {
+        // Conversion succeeded; bookmark can be refreshed on the next manual open.
+      }
+      await _recentProjectsStore.add(result.outputPath, bookmark: bookmark);
+      await _loadRecentProjects();
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.welcome.conversion.success(path: output))),
+        SnackBar(
+          content: Text(
+            t.welcome.conversion.success(path: result.outputPath),
+          ),
+        ),
       );
+
+      if (choice.openAfter) {
+        await _runProjectAction(
+          () => _projectRepository.openProject(result!.outputPath),
+        );
+      }
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
         _errorMessage = t.welcome.conversion.failure(error: '$error');
       });
     } finally {
+      if (scopedPath != null) {
+        await _bookmarkService.stopAccessing(scopedPath);
+      }
       if (mounted) setState(() => _isBusy = false);
     }
   }
@@ -167,9 +320,18 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     await _runProjectAction(_projectRepository.pickAndOpenProject);
   }
 
-  Future<void> _openRecentProject(String path) async {
+  Future<void> _openRecentProject(String projectPath) async {
+    final version = _recentProjectVersions[projectPath];
+    if (version != null && version != MdwVersionConverter.currentVersion) {
+      await _convertBookVersion(
+        sourcePath: projectPath,
+        targetVersion: MdwVersionConverter.currentVersion,
+      );
+      return;
+    }
+
     if (Platform.isMacOS) {
-      final bookmark = await _recentProjectsStore.bookmarkFor(path);
+      final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
       if (bookmark == null) {
         setState(() => _errorMessage = t.welcome.errors.legacyBookmark);
         return;
@@ -191,7 +353,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       }
     }
 
-    await _runProjectAction(() => _projectRepository.openProject(path));
+    await _runProjectAction(() => _projectRepository.openProject(projectPath));
   }
 
   Future<void> _runProjectAction(
@@ -253,10 +415,14 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     await _loadRecentProjects();
   }
 
-  Future<void> _removeRecentProject(String path) async {
-    final updated = await _recentProjectsStore.remove(path);
+  Future<void> _removeRecentProject(String projectPath) async {
+    final updated = await _recentProjectsStore.remove(projectPath);
     if (!mounted) return;
-    setState(() => _recentProjects = updated);
+    setState(() {
+      _recentProjects = updated;
+      _recentProjectVersions = Map<String, int?>.of(_recentProjectVersions)
+        ..remove(projectPath);
+    });
   }
 
   Future<String?> _askForBookTitle({
@@ -292,12 +458,18 @@ final class _MarkweftAppState extends State<MarkweftApp> {
               isBusy: _isBusy,
               errorMessage: _errorMessage,
               recentProjects: _recentProjects,
+              recentProjectVersions: _recentProjectVersions,
+              currentMdwVersion: MdwVersionConverter.currentVersion,
               showRecentBookPaths: _appSettings.showRecentBookPaths,
               onOpenAppSettings: _openAppSettings,
               onCreateBook: _createProject,
               onOpenBook: _pickProject,
               onImportMarkdown: _importMarkdown,
-              onConvertBookVersion: _convertBookVersion,
+              onConvertBookVersion: () => _convertBookVersion(),
+              onConvertRecent: (projectPath) => _convertBookVersion(
+                sourcePath: projectPath,
+                targetVersion: MdwVersionConverter.currentVersion,
+              ),
               onOpenRecent: _openRecentProject,
               onRemoveRecent: _removeRecentProject,
             )
@@ -305,8 +477,19 @@ final class _MarkweftAppState extends State<MarkweftApp> {
               key: ValueKey(_activeProject!.file.path),
               project: _activeProject!,
               projectRepository: _projectRepository,
+              onOpenAppSettings: _openAppSettings,
               onClose: _closeProject,
             ),
     );
   }
+}
+
+final class _ConversionChoice {
+  const _ConversionChoice({
+    required this.mode,
+    required this.openAfter,
+  });
+
+  final MdwConversionMode mode;
+  final bool openAfter;
 }
