@@ -17,7 +17,17 @@
       "columns": {
         "title": "Default columns",
         "helper": "Available column counts are defined by the selected template."
-      }
+      },
+      "platforms": "Template output",
+      "pdf": "PDF",
+      "epub": "EPUB"
+    },
+    "appearance": {
+      "title": "Publication appearance",
+      "colorMode": "Book color mode",
+      "light": "Light pages",
+      "dark": "Dark pages",
+      "description": "This controls the rendered book theme independently from the Markweft application theme."
     },
     "language": {
       "title": "Language & direction",
@@ -48,6 +58,16 @@
         "right": "Right",
         "justify": "Justify"
       }
+    },
+    "toc": {
+      "title": "Table of contents",
+      "enabled": "Add table of contents page",
+      "pageTitle": "Page title",
+      "maxDepth": "Maximum chapter depth",
+      "startOnNewPage": "Start on a new page",
+      "pageNumbers": "Include page numbers",
+      "pageNumbersHint": "Page numbers are reserved for a later pagination pass; EPUB always has native navigation.",
+      "preview": "Preview TOC"
     },
     "templateBehavior": {
       "title": "Template behavior",
