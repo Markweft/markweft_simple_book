@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:markweft_simple_book/core/i18n/translations.g.dart';
+import 'package:markweft_simple_book/features/book_editor/application/book_compilation_service.dart';
 import 'package:markweft_simple_book/features/book_editor/application/book_output_format.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
@@ -37,16 +38,33 @@ final class BookPreviewPanel extends StatefulWidget {
 }
 
 final class _BookPreviewPanelState extends State<BookPreviewPanel> {
+  static const BookCompilationService _compilationService =
+      BookCompilationService();
+
   late BookOutputFormat _format;
   late BookPreviewScope _scope;
   String? _wholeBookMarkdown;
   bool _loadingWholeBook = false;
   Object? _wholeBookError;
 
+  List<BookOutputFormat> get _supportedFormats {
+    final formats = <BookOutputFormat>[];
+    if (widget.template.metadata.supportsPdf) {
+      formats.add(BookOutputFormat.pdf);
+    }
+    if (widget.template.metadata.supportsEpub) {
+      formats.add(BookOutputFormat.epub);
+    }
+    return formats;
+  }
+
   @override
   void initState() {
     super.initState();
-    _format = widget.initialFormat;
+    final supported = _supportedFormats;
+    _format = supported.contains(widget.initialFormat)
+        ? widget.initialFormat
+        : supported.first;
     _scope = widget.initialScope;
     if (_scope == BookPreviewScope.book) {
       unawaited(_loadWholeBook());
@@ -56,7 +74,14 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
   @override
   void didUpdateWidget(covariant BookPreviewPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.project.file.path != widget.project.file.path) {
+    final supported = _supportedFormats;
+    if (!supported.contains(_format) && supported.isNotEmpty) {
+      _format = supported.first;
+    }
+
+    if (oldWidget.project.file.path != widget.project.file.path ||
+        oldWidget.settings != widget.settings ||
+        oldWidget.template.metadata.id != widget.template.metadata.id) {
       _wholeBookMarkdown = null;
       _wholeBookError = null;
       if (_scope == BookPreviewScope.book) {
@@ -82,8 +107,11 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
 
     try {
       await widget.onBeforeFullBookPreview();
-      final markdown = await widget.projectRepository.loadWholeBookMarkdown(
-        widget.project,
+      final markdown = await _compilationService.buildMarkdown(
+        project: widget.project,
+        repository: widget.projectRepository,
+        template: widget.template,
+        settings: widget.settings,
       );
       if (!mounted) return;
       setState(() => _wholeBookMarkdown = markdown);
@@ -106,6 +134,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
       child: Column(
         children: [
           _PreviewToolbar(
+            supportedFormats: _supportedFormats,
             format: _format,
             scope: _scope,
             loading: _loadingWholeBook,
@@ -165,6 +194,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
 
 final class _PreviewToolbar extends StatelessWidget {
   const _PreviewToolbar({
+    required this.supportedFormats,
     required this.format,
     required this.scope,
     required this.loading,
@@ -173,6 +203,7 @@ final class _PreviewToolbar extends StatelessWidget {
     required this.onRefresh,
   });
 
+  final List<BookOutputFormat> supportedFormats;
   final BookOutputFormat format;
   final BookPreviewScope scope;
   final bool loading;
@@ -191,23 +222,42 @@ final class _PreviewToolbar extends StatelessWidget {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          SegmentedButton<BookOutputFormat>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(
-                value: BookOutputFormat.pdf,
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: Text(tr.editor.previewPanel.format.pdf),
+          if (supportedFormats.length > 1)
+            SegmentedButton<BookOutputFormat>(
+              showSelectedIcon: false,
+              segments: [
+                for (final value in supportedFormats)
+                  ButtonSegment(
+                    value: value,
+                    icon: Icon(
+                      value == BookOutputFormat.pdf
+                          ? Icons.picture_as_pdf_outlined
+                          : Icons.menu_book_outlined,
+                    ),
+                    label: Text(
+                      value == BookOutputFormat.pdf
+                          ? tr.editor.previewPanel.format.pdf
+                          : tr.editor.previewPanel.format.epub,
+                    ),
+                  ),
+              ],
+              selected: {format},
+              onSelectionChanged: (selection) => onFormatChanged(selection.first),
+            )
+          else if (supportedFormats.isNotEmpty)
+            Chip(
+              avatar: Icon(
+                supportedFormats.first == BookOutputFormat.pdf
+                    ? Icons.picture_as_pdf_outlined
+                    : Icons.menu_book_outlined,
+                size: 17,
               ),
-              ButtonSegment(
-                value: BookOutputFormat.epub,
-                icon: const Icon(Icons.menu_book_outlined),
-                label: Text(tr.editor.previewPanel.format.epub),
+              label: Text(
+                supportedFormats.first == BookOutputFormat.pdf
+                    ? tr.editor.previewPanel.format.pdf
+                    : tr.editor.previewPanel.format.epub,
               ),
-            ],
-            selected: {format},
-            onSelectionChanged: (selection) => onFormatChanged(selection.first),
-          ),
+            ),
           SegmentedButton<BookPreviewScope>(
             showSelectedIcon: false,
             segments: [
