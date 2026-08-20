@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:markweft_simple_book/core/i18n/translations.g.dart';
@@ -25,6 +26,11 @@ final class MarkweftApp extends StatefulWidget {
 }
 
 final class _MarkweftAppState extends State<MarkweftApp> {
+  static const XTypeGroup _projectType = XTypeGroup(
+    label: 'Markweft book',
+    extensions: <String>['mdw'],
+  );
+
   final BookProjectRepository _projectRepository = MdwBookProjectRepository();
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
   final MacosSecurityScopedBookmarkService _bookmarkService =
@@ -317,7 +323,41 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   }
 
   Future<void> _pickProject() async {
-    await _runProjectAction(_projectRepository.pickAndOpenProject);
+    final selected = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[_projectType],
+    );
+    if (selected == null) return;
+
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final version = await _versionConverter.inspectVersion(selected.path);
+      if (!mounted) return;
+
+      if (version != MdwVersionConverter.currentVersion) {
+        setState(() => _isBusy = false);
+        await _convertBookVersion(
+          sourcePath: selected.path,
+          targetVersion: MdwVersionConverter.currentVersion,
+        );
+        return;
+      }
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isBusy = false;
+        _errorMessage = t.welcome.errors.openBook(error: '$error');
+      });
+      return;
+    }
+
+    if (mounted) setState(() => _isBusy = false);
+    await _runProjectAction(
+      () => _projectRepository.openProject(selected.path),
+    );
   }
 
   Future<void> _openRecentProject(String projectPath) async {
