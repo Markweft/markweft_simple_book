@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:markweft_simple_book/app/markweft_app.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
