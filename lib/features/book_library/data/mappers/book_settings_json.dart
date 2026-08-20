@@ -23,6 +23,13 @@ final class BookSettingsJson {
         'lineHeight': settings.typography.lineHeight,
         'alignment': settings.typography.alignment.name,
       },
+      'tableOfContents': <String, Object?>{
+        'enabled': settings.tableOfContents.enabled,
+        'title': settings.tableOfContents.title,
+        'maxDepth': settings.tableOfContents.maxDepth,
+        'startOnNewPage': settings.tableOfContents.startOnNewPage,
+        'includePageNumbers': settings.tableOfContents.includePageNumbers,
+      },
     });
   }
 
@@ -46,6 +53,17 @@ final class BookSettingsJson {
             ),
           )
         : const BookTypographySettings();
+
+    final tocJson = decoded['tableOfContents'];
+    final tableOfContents = tocJson is Map<String, dynamic>
+        ? BookTocSettings(
+            enabled: _bool(tocJson['enabled'], false),
+            title: _string(tocJson['title'], 'Table of Contents'),
+            maxDepth: _depth(tocJson['maxDepth']),
+            startOnNewPage: _bool(tocJson['startOnNewPage'], true),
+            includePageNumbers: _bool(tocJson['includePageNumbers'], false),
+          )
+        : const BookTocSettings();
 
     return BookSettings(
       templateId: _string(decoded['templateId'], 'markweft.simple'),
@@ -74,6 +92,7 @@ final class BookSettingsJson {
         BookColorMode.light,
       ),
       typography: typography,
+      tableOfContents: tableOfContents,
     );
   }
 
@@ -96,6 +115,22 @@ final class BookSettingsJson {
     if (parsed < 1) return 1;
     if (parsed > 3) return 3;
     return parsed;
+  }
+
+  static int _depth(Object? value) {
+    final parsed = _int(value, 3);
+    if (parsed < 1) return 1;
+    if (parsed > 6) return 6;
+    return parsed;
+  }
+
+  static bool _bool(Object? value, bool fallback) {
+    if (value is bool) return value;
+    if (value is String) {
+      if (value.toLowerCase() == 'true') return true;
+      if (value.toLowerCase() == 'false') return false;
+    }
+    return fallback;
   }
 
   static double _double(Object? value, double fallback) {
