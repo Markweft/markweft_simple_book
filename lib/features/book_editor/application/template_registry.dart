@@ -12,12 +12,19 @@ final class TemplateDescriptor {
   Set<TemplateOutputPlatform> get outputPlatforms =>
       template.metadata.outputPlatforms;
 
+  Set<TemplateBookSetting> get supportedBookSettings =>
+      template.metadata.supportedBookSettings;
+
   Set<TemplateToolbarAction> get toolbarActions =>
       template.metadata.toolbarActions;
 
   bool get supportsPdf => template.metadata.supportsPdf;
 
   bool get supportsEpub => template.metadata.supportsEpub;
+
+  bool supportsSetting(TemplateBookSetting setting) {
+    return supportedBookSettings.contains(setting);
+  }
 }
 
 final class TemplateRegistry {
