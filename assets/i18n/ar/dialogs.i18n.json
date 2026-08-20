@@ -13,10 +13,11 @@
       "hint": "كتابي الجديد"
     }
   },
-  "chapterTitle": {
+  "chapter": {
     "fieldLabel": "عنوان الفصل"
   },
   "version": {
     "messageLabel": "رسالة الإصدار"
-  }
+  },
+  "chapterTitle": "@:dialogs.chapter.fieldLabel"
 }
