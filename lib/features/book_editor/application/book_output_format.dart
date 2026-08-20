@@ -1,7 +1,6 @@
 enum BookOutputFormat {
   pdf,
   epub,
-  html,
 }
 
 enum BookPreviewScope {
