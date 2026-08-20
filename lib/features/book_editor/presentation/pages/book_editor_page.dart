@@ -3,7 +3,10 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:markweft_simple_book/features/book_editor/application/book_export_service.dart';
+import 'package:markweft_simple_book/features/book_editor/application/book_output_format.dart';
 import 'package:markweft_simple_book/features/book_editor/application/template_registry.dart';
+import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_preview_panel.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_settings_dialog.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';
 import 'package:markweft_simple_book/features/book_library/data/extensions/chapter_management_repository_extensions.dart';
@@ -12,6 +15,8 @@ import 'package:markweft_simple_book/features/book_library/domain/entities/markw
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 import 'package:path/path.dart' as path;
+
+enum SaveStatus { loading, saved, saving, failed }
 
 final class BookEditorPage extends StatefulWidget {
   const BookEditorPage({
@@ -29,13 +34,21 @@ final class BookEditorPage extends StatefulWidget {
   State<BookEditorPage> createState() => _BookEditorPageState();
 }
 
-enum SaveStatus { loading, saved, saving, failed }
-
 final class _BookEditorPageState extends State<BookEditorPage> {
   static const int _livePreviewCharacterLimit = 350000;
+  static const BookExportService _exportService = BookExportService();
+
   static const XTypeGroup _pdfType = XTypeGroup(
     label: 'PDF document',
     extensions: <String>['pdf'],
+  );
+  static const XTypeGroup _epubType = XTypeGroup(
+    label: 'EPUB book',
+    extensions: <String>['epub'],
+  );
+  static const XTypeGroup _htmlType = XTypeGroup(
+    label: 'HTML document',
+    extensions: <String>['html'],
   );
 
   late final TextEditingController _controller;
@@ -46,22 +59,20 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   List<BookChapterFile> _chapters = const <BookChapterFile>[];
   BookChapterFile? _activeChapter;
   BookSettings _bookSettings = const BookSettings();
+  BookWorkspaceMode _workspaceMode = BookWorkspaceMode.edit;
   String _draftMarkdown = '';
   String _previewMarkdown = '';
   String? _pendingMarkdown;
   String? _errorMessage;
   bool _saveInProgress = false;
-  bool _pdfInProgress = false;
+  bool _exportInProgress = false;
   bool _settingsInProgress = false;
   bool _largeChapterPreviewPaused = false;
   Completer<void>? _saveCompleter;
   SaveStatus _saveStatus = SaveStatus.loading;
 
-  BookTemplate get _template => TemplateRegistry.resolve(_bookSettings.templateId);
-
-  BookDocument get _activeDocument => _template.parse(
-        _previewMarkdown,
-        settings: _bookSettings,
+  BookTemplate get _template => TemplateRegistry.resolve(
+        _bookSettings.templateId,
       );
 
   @override
@@ -82,8 +93,11 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _loadBook() async {
     try {
-      final settings = await widget.projectRepository.loadBookSettings(widget.project);
+      final settings = await widget.projectRepository.loadBookSettings(
+        widget.project,
+      );
       var chapters = await widget.projectRepository.loadChapters(widget.project);
+
       if (chapters.isEmpty) {
         await widget.projectRepository.createChapter(
           widget.project,
@@ -166,6 +180,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       while (_pendingMarkdown != null) {
         final chapter = _activeChapter;
         if (chapter == null) break;
+
         final value = _pendingMarkdown!;
         _pendingMarkdown = null;
         await widget.projectRepository.saveChapterMarkdown(
@@ -218,12 +233,16 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
   Future<void> _saveNow({bool flushProject = true}) async {
     _saveDebounce?.cancel();
-    setState(() => _saveStatus = SaveStatus.saving);
+    if (mounted) setState(() => _saveStatus = SaveStatus.saving);
     await _queueSave(_controller.text);
     if (flushProject) {
       _projectFlushDebounce?.cancel();
       await _flushProject();
     }
+  }
+
+  Future<void> _saveBeforeFullBookPreview() {
+    return _saveNow(flushProject: false);
   }
 
   Future<void> _selectChapter(BookChapterFile chapter) async {
@@ -308,7 +327,8 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       builder: (context) => AlertDialog(
         title: const Text('Delete chapter?'),
         content: Text(
-          'Delete “${chapter.title}” and its Markdown file? This cannot be undone.',
+          'Delete “${chapter.title}” and its Markdown file? '
+          'This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -329,8 +349,12 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     await widget.projectRepository.deleteChapter(widget.project, chapter);
     final chapters = await widget.projectRepository.loadChapters(widget.project);
     if (!mounted) return;
+
     setState(() => _chapters = chapters);
-    if (deletedActive && chapters.isNotEmpty) await _selectChapter(chapters.first);
+    if (deletedActive && chapters.isNotEmpty) {
+      _activeChapter = null;
+      await _selectChapter(chapters.first);
+    }
   }
 
   Future<void> _moveChapter(BookChapterFile chapter, int direction) async {
@@ -341,6 +365,17 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     final reordered = List<BookChapterFile>.of(_chapters);
     final moved = reordered.removeAt(index);
     reordered.insert(target, moved);
+    setState(() => _chapters = reordered);
+    await widget.projectRepository.reorderChapters(widget.project, reordered);
+  }
+
+  Future<void> _reorderChapters(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex--;
+    if (oldIndex == newIndex) return;
+
+    final reordered = List<BookChapterFile>.of(_chapters);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
     setState(() => _chapters = reordered);
     await widget.projectRepository.reorderChapters(widget.project, reordered);
   }
@@ -416,40 +451,73 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     });
   }
 
-  Future<void> _exportPdf() async {
-    if (_pdfInProgress) return;
+  Future<void> _exportBook(BookOutputFormat format) async {
+    if (_exportInProgress) return;
+
+    final baseName = path.basenameWithoutExtension(widget.project.file.path);
+    final (extension, typeGroup) = switch (format) {
+      BookOutputFormat.pdf => ('pdf', _pdfType),
+      BookOutputFormat.epub => ('epub', _epubType),
+      BookOutputFormat.html => ('html', _htmlType),
+    };
 
     final location = await getSaveLocation(
-      suggestedName: '${path.basenameWithoutExtension(widget.project.file.path)}.pdf',
-      acceptedTypeGroups: const <XTypeGroup>[_pdfType],
+      suggestedName: '$baseName.$extension',
+      acceptedTypeGroups: <XTypeGroup>[typeGroup],
     );
     if (location == null) return;
 
     setState(() {
-      _pdfInProgress = true;
+      _exportInProgress = true;
       _errorMessage = null;
     });
 
     try {
       await _saveNow();
-      final markdown = await widget.projectRepository.loadWholeBookMarkdown(
-        widget.project,
-      );
-      final document = _template.parse(markdown, settings: _bookSettings);
-      final bytes = await _template.buildPdf(document).save();
-      await File(location.path).writeAsBytes(bytes, flush: true);
+
+      switch (format) {
+        case BookOutputFormat.pdf:
+          final markdown = await widget.projectRepository.loadWholeBookMarkdown(
+            widget.project,
+          );
+          final document = _template.parse(
+            markdown,
+            settings: _bookSettings,
+          );
+          final bytes = await _template.buildPdf(document).save();
+          await File(location.path).writeAsBytes(bytes, flush: true);
+        case BookOutputFormat.epub:
+          final bytes = await _exportService.buildEpub(
+            project: widget.project,
+            repository: widget.projectRepository,
+            settings: _bookSettings,
+          );
+          await File(location.path).writeAsBytes(bytes, flush: true);
+        case BookOutputFormat.html:
+          final html = await _exportService.buildHtml(
+            project: widget.project,
+            repository: widget.projectRepository,
+            settings: _bookSettings,
+          );
+          await File(location.path).writeAsString(html, flush: true);
+      }
+
       if (!mounted) return;
-      _showMessage('PDF exported to ${location.path}');
+      _showMessage('${format.name.toUpperCase()} exported to ${location.path}');
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Unable to export PDF: $error');
+      setState(() {
+        _errorMessage = 'Unable to export ${format.name.toUpperCase()}: $error';
+      });
     } finally {
-      if (mounted) setState(() => _pdfInProgress = false);
+      if (mounted) setState(() => _exportInProgress = false);
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _closeBook() async {
@@ -466,8 +534,6 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     final activeIndex = _chapters.indexWhere(
       (chapter) => chapter.id == _activeChapter?.id,
     );
-    final document = _largeChapterPreviewPaused ? null : _activeDocument;
-    final pageCount = document?.pages.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -492,11 +558,30 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         actions: [
           if (activeIndex >= 0)
             Center(
-              child: Text(
-                'Chapter ${activeIndex + 1}/${_chapters.length}'
-                '${pageCount == null ? '' : ' · $pageCount pages'}',
-              ),
+              child: Text('Chapter ${activeIndex + 1}/${_chapters.length}'),
             ),
+          const SizedBox(width: 12),
+          Center(
+            child: SegmentedButton<BookWorkspaceMode>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: BookWorkspaceMode.edit,
+                  icon: Icon(Icons.edit_outlined),
+                  label: Text('Edit'),
+                ),
+                ButtonSegment(
+                  value: BookWorkspaceMode.preview,
+                  icon: Icon(Icons.visibility_outlined),
+                  label: Text('Preview'),
+                ),
+              ],
+              selected: {_workspaceMode},
+              onSelectionChanged: (selection) {
+                setState(() => _workspaceMode = selection.first);
+              },
+            ),
+          ),
           const SizedBox(width: 8),
           IconButton(
             tooltip: 'Book settings',
@@ -505,17 +590,39 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                 : _showBookSettings,
             icon: const Icon(Icons.tune),
           ),
-          IconButton(
-            tooltip: 'Export PDF',
-            onPressed: _saveStatus == SaveStatus.loading || _pdfInProgress
-                ? null
-                : _exportPdf,
-            icon: _pdfInProgress
+          PopupMenuButton<BookOutputFormat>(
+            tooltip: 'Export book',
+            enabled: _saveStatus != SaveStatus.loading && !_exportInProgress,
+            onSelected: (format) => unawaited(_exportBook(format)),
+            icon: _exportInProgress
                 ? const SizedBox.square(
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.picture_as_pdf_outlined),
+                : const Icon(Icons.ios_share_outlined),
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: BookOutputFormat.pdf,
+                child: ListTile(
+                  leading: Icon(Icons.picture_as_pdf_outlined),
+                  title: Text('Export PDF'),
+                ),
+              ),
+              PopupMenuItem(
+                value: BookOutputFormat.epub,
+                child: ListTile(
+                  leading: Icon(Icons.menu_book_outlined),
+                  title: Text('Export EPUB'),
+                ),
+              ),
+              PopupMenuItem(
+                value: BookOutputFormat.html,
+                child: ListTile(
+                  leading: Icon(Icons.language_outlined),
+                  title: Text('Export HTML'),
+                ),
+              ),
+            ],
           ),
           IconButton(
             tooltip: 'Save now',
@@ -524,7 +631,10 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           ),
           Padding(
             padding: const EdgeInsets.only(right: 20),
-            child: _SaveStatusView(status: _saveStatus, path: widget.project.file.path),
+            child: _SaveStatusView(
+              status: _saveStatus,
+              path: widget.project.file.path,
+            ),
           ),
         ],
       ),
@@ -543,18 +653,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      final editor = _MarkdownEditor(
-                        controller: _controller,
-                        chapterTitle: _activeChapter?.title,
-                        onChanged: _onMarkdownChanged,
-                      );
-                      final preview = _largeChapterPreviewPaused
-                          ? _LargeChapterPreviewPaused(
-                              characters: _draftMarkdown.length,
-                              onRefresh: _refreshLargeChapterPreview,
-                            )
-                          : _TemplatePreview(template: _template, document: document!);
-                      final sections = _BookSectionsSidebar(
+                      final sidebar = _BookSectionsSidebar(
                         chapters: _chapters,
                         activeChapterId: _activeChapter?.id,
                         onOpenSettings: _showBookSettings,
@@ -564,12 +663,47 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                         onDeleteChapter: _deleteChapter,
                         onMoveChapterUp: (chapter) => _moveChapter(chapter, -1),
                         onMoveChapterDown: (chapter) => _moveChapter(chapter, 1),
+                        onReorder: _reorderChapters,
                       );
+
+                      final editor = _MarkdownEditor(
+                        controller: _controller,
+                        chapterTitle: _activeChapter?.title,
+                        onChanged: _onMarkdownChanged,
+                      );
+
+                      final preview = _largeChapterPreviewPaused
+                          ? _LargeChapterPreviewPaused(
+                              characters: _draftMarkdown.length,
+                              onRefresh: _refreshLargeChapterPreview,
+                            )
+                          : BookPreviewPanel(
+                              project: widget.project,
+                              projectRepository: widget.projectRepository,
+                              template: _template,
+                              settings: _bookSettings,
+                              chapterMarkdown: _previewMarkdown,
+                              chapterTitle: _activeChapter?.title,
+                              onBeforeFullBookPreview: _saveBeforeFullBookPreview,
+                            );
+
+                      if (_workspaceMode == BookWorkspaceMode.preview) {
+                        if (constraints.maxWidth >= 980) {
+                          return Row(
+                            children: [
+                              SizedBox(width: 280, child: sidebar),
+                              const VerticalDivider(width: 1),
+                              Expanded(child: preview),
+                            ],
+                          );
+                        }
+                        return preview;
+                      }
 
                       if (constraints.maxWidth >= 1180) {
                         return Row(
                           children: [
-                            SizedBox(width: 280, child: sections),
+                            SizedBox(width: 280, child: sidebar),
                             const VerticalDivider(width: 1),
                             Expanded(child: editor),
                             const VerticalDivider(width: 1),
@@ -640,7 +774,10 @@ final class _MarkdownEditor extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            MarkdownCommandToolbar(controller: controller, onChanged: onChanged),
+            MarkdownCommandToolbar(
+              controller: controller,
+              onChanged: onChanged,
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: TextField(
@@ -679,6 +816,7 @@ final class _BookSectionsSidebar extends StatelessWidget {
     required this.onDeleteChapter,
     required this.onMoveChapterUp,
     required this.onMoveChapterDown,
+    required this.onReorder,
   });
 
   final List<BookChapterFile> chapters;
@@ -690,6 +828,7 @@ final class _BookSectionsSidebar extends StatelessWidget {
   final ValueChanged<BookChapterFile> onDeleteChapter;
   final ValueChanged<BookChapterFile> onMoveChapterUp;
   final ValueChanged<BookChapterFile> onMoveChapterDown;
+  final Future<void> Function(int oldIndex, int newIndex) onReorder;
 
   @override
   Widget build(BuildContext context) {
@@ -715,7 +854,10 @@ final class _BookSectionsSidebar extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('Chapters', style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    'Chapters',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Add chapter',
@@ -730,16 +872,7 @@ final class _BookSectionsSidebar extends StatelessWidget {
               buildDefaultDragHandles: false,
               itemCount: chapters.length,
               onReorder: (oldIndex, newIndex) {
-                if (newIndex > oldIndex) newIndex--;
-                if (newIndex == oldIndex) return;
-                final chapter = chapters[oldIndex];
-                final direction = newIndex < oldIndex ? -1 : 1;
-                final steps = (newIndex - oldIndex).abs();
-                for (var i = 0; i < steps; i++) {
-                  direction < 0
-                      ? onMoveChapterUp(chapter)
-                      : onMoveChapterDown(chapter);
-                }
+                unawaited(onReorder(oldIndex, newIndex));
               },
               itemBuilder: (context, index) {
                 final chapter = chapters[index];
@@ -772,13 +905,25 @@ final class _BookSectionsSidebar extends StatelessWidget {
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                      const PopupMenuItem(
+                        value: 'rename',
+                        child: Text('Rename'),
+                      ),
                       if (index > 0)
-                        const PopupMenuItem(value: 'up', child: Text('Move up')),
+                        const PopupMenuItem(
+                          value: 'up',
+                          child: Text('Move up'),
+                        ),
                       if (index < chapters.length - 1)
-                        const PopupMenuItem(value: 'down', child: Text('Move down')),
+                        const PopupMenuItem(
+                          value: 'down',
+                          child: Text('Move down'),
+                        ),
                       const PopupMenuDivider(),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
                     ],
                   ),
                 );
@@ -840,43 +985,11 @@ final class _LargeChapterPreviewPaused extends StatelessWidget {
   }
 }
 
-final class _TemplatePreview extends StatelessWidget {
-  const _TemplatePreview({required this.template, required this.document});
-
-  final BookTemplate template;
-  final BookDocument document;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: const Color(0xFFE8E3DB),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              children: [
-                const Icon(Icons.auto_awesome_outlined, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${template.metadata.name} · current chapter · '
-                    '${document.pages.length} pages',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(child: template.buildDocument(document)),
-        ],
-      ),
-    );
-  }
-}
-
 final class _SaveStatusView extends StatelessWidget {
-  const _SaveStatusView({required this.status, required this.path});
+  const _SaveStatusView({
+    required this.status,
+    required this.path,
+  });
 
   final SaveStatus status;
   final String path;
