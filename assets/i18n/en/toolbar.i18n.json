@@ -1,0 +1,36 @@
+{
+  "headings": {
+    "h1": "Heading 1",
+    "h2": "Heading 2",
+    "placeholder": "Heading"
+  },
+  "formatting": {
+    "bold": "Bold",
+    "italic": "Italic",
+    "quote": "Quote",
+    "divider": "Divider",
+    "codeBlock": "Code block"
+  },
+  "lists": {
+    "bullet": "Bullet list",
+    "numbered": "Numbered list",
+    "itemOne": "Item one",
+    "itemTwo": "Item two",
+    "firstItem": "First item",
+    "secondItem": "Second item"
+  },
+  "insert": {
+    "link": "Link",
+    "image": "Image",
+    "table": "Table",
+    "newPage": "New page",
+    "newPageWithSettings": "New page with settings"
+  },
+  "placeholders": {
+    "boldText": "bold text",
+    "italicText": "italic text",
+    "quoteText": "Quote",
+    "linkText": "Link text",
+    "imageDescription": "Image description"
+  }
+}
