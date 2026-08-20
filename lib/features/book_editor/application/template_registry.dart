@@ -1,27 +1,40 @@
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 
+final class TemplateDescriptor {
+  const TemplateDescriptor({required this.template});
+
+  final BookTemplate template;
+
+  List<int> get supportedColumns => template.metadata.supportedColumns;
+
+  List<String> get chapterLayouts => template.metadata.chapterLayouts;
+
+  Set<TemplateOutputPlatform> get outputPlatforms =>
+      template.metadata.outputPlatforms;
+
+  Set<TemplateToolbarAction> get toolbarActions =>
+      template.metadata.toolbarActions;
+
+  bool get supportsPdf => template.metadata.supportsPdf;
+
+  bool get supportsEpub => template.metadata.supportsEpub;
+}
+
 final class TemplateRegistry {
   const TemplateRegistry._();
 
-  static const List<BookTemplate> available = <BookTemplate>[
-    SimpleBookTemplate(),
+  static const List<TemplateDescriptor> available = <TemplateDescriptor>[
+    TemplateDescriptor(template: SimpleBookTemplate()),
   ];
 
-  static BookTemplate resolve(String templateId) {
-    for (final template in available) {
-      if (template.metadata.id == templateId) return template;
+  static TemplateDescriptor descriptor(String templateId) {
+    for (final descriptor in available) {
+      if (descriptor.template.metadata.id == templateId) return descriptor;
     }
     return available.first;
   }
 
-  static TemplateMetadata descriptor(String templateId) {
-    return resolve(templateId).metadata;
-  }
-
-  static bool supports(
-    String templateId,
-    TemplateOutputPlatform platform,
-  ) {
-    return descriptor(templateId).outputPlatforms.contains(platform);
+  static BookTemplate resolve(String templateId) {
+    return descriptor(templateId).template;
   }
 }
