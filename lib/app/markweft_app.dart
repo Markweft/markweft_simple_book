@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 import 'package:markweft_simple_book/core/settings/app_settings.dart';
 import 'package:markweft_simple_book/core/settings/app_settings_page.dart';
 import 'package:markweft_simple_book/core/settings/app_settings_store.dart';
@@ -15,7 +16,6 @@ import 'package:markweft_simple_book/features/book_library/data/services/recent_
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
 import 'package:markweft_simple_book/features/book_library/presentation/pages/welcome_page.dart';
-import 'package:markweft_simple_book/i18n/strings.g.dart';
 
 final class MarkweftApp extends StatefulWidget {
   const MarkweftApp({super.key});
@@ -91,8 +91,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
   Future<void> _createProject() async {
     final title = await _askForBookTitle(
-      title: t.dialogs.createNewBook,
-      actionLabel: t.dialogs.create,
+      title: t.dialogs.bookTitle.create.title,
+      actionLabel: t.dialogs.bookTitle.create.action,
     );
     if (title == null) return;
     await _runProjectAction(
@@ -102,8 +102,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
   Future<void> _importMarkdown() async {
     final title = await _askForBookTitle(
-      title: t.dialogs.importMarkdownBook,
-      actionLabel: t.dialogs.import,
+      title: t.dialogs.bookTitle.import.title,
+      actionLabel: t.dialogs.bookTitle.import.action,
     );
     if (title == null) return;
     await _runProjectAction(
@@ -119,20 +119,20 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     final targetVersion = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(tr.welcome.convertDialogTitle),
-        content: Text(tr.welcome.convertDialogBody),
+        title: Text(tr.welcome.conversion.dialog.title),
+        content: Text(tr.welcome.conversion.dialog.description),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(tr.app.cancel),
+            child: Text(tr.app.actions.cancel),
           ),
           OutlinedButton(
             onPressed: () => Navigator.of(context).pop(1),
-            child: Text(tr.welcome.convertToV1),
+            child: Text(tr.welcome.conversion.dialog.toV1),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(3),
-            child: Text(tr.welcome.convertToV3),
+            child: Text(tr.welcome.conversion.dialog.toV3),
           ),
         ],
       ),
@@ -151,12 +151,12 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       if (output == null || !mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.welcome.convertedSaved(path: output))),
+        SnackBar(content: Text(t.welcome.conversion.success(path: output))),
       );
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = t.welcome.convertFailed(error: '$error');
+        _errorMessage = t.welcome.conversion.failure(error: '$error');
       });
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -171,7 +171,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     if (Platform.isMacOS) {
       final bookmark = await _recentProjectsStore.bookmarkFor(path);
       if (bookmark == null) {
-        setState(() => _errorMessage = t.welcome.oldBookmark);
+        setState(() => _errorMessage = t.welcome.errors.legacyBookmark);
         return;
       }
 
@@ -185,7 +185,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       } on Object catch (error) {
         if (!mounted) return;
         setState(() {
-          _errorMessage = t.welcome.bookmarkRestoreFailed(error: '$error');
+          _errorMessage = t.welcome.errors.bookmarkRestore(error: '$error');
         });
         return;
       }
@@ -226,7 +226,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = t.welcome.openFailed(error: '$error');
+        _errorMessage = t.welcome.errors.openBook(error: '$error');
       });
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -279,7 +279,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      title: 'Markweft',
+      title: t.app.identity.name,
       debugShowCheckedModeBanner: false,
       theme: MarkweftTheme.light(),
       darkTheme: MarkweftTheme.dark(),
