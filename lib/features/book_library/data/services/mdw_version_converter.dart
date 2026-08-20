@@ -9,6 +9,26 @@ import 'package:markweft_template_simple/markweft_template_simple.dart';
 import 'package:path/path.dart' as path;
 import 'package:yaml/yaml.dart';
 
+enum MdwConversionMode { replaceSource, saveCopy }
+
+final class MdwConversionResult {
+  const MdwConversionResult({
+    required this.sourcePath,
+    required this.outputPath,
+    required this.sourceVersion,
+    required this.targetVersion,
+    required this.mode,
+  });
+
+  final String sourcePath;
+  final String outputPath;
+  final int sourceVersion;
+  final int targetVersion;
+  final MdwConversionMode mode;
+
+  bool get replacedSource => mode == MdwConversionMode.replaceSource;
+}
+
 final class MdwVersionConverter {
   const MdwVersionConverter();
 
@@ -25,7 +45,27 @@ final class MdwVersionConverter {
     caseSensitive: false,
   );
 
-  Future<String?> pickAndConvert({required int targetVersion}) async {
+  Future<MdwConversionResult?> pickAndConvert({
+    required int targetVersion,
+    required MdwConversionMode mode,
+  }) async {
+    final selected = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[_projectType],
+    );
+    if (selected == null) return null;
+
+    return convertPath(
+      sourcePath: selected.path,
+      targetVersion: targetVersion,
+      mode: mode,
+    );
+  }
+
+  Future<MdwConversionResult?> convertPath({
+    required String sourcePath,
+    required int targetVersion,
+    required MdwConversionMode mode,
+  }) async {
     if (!supportedVersions.contains(targetVersion)) {
       throw ArgumentError.value(
         targetVersion,
@@ -34,14 +74,7 @@ final class MdwVersionConverter {
       );
     }
 
-    final selected = await openFile(
-      acceptedTypeGroups: const <XTypeGroup>[_projectType],
-    );
-    if (selected == null) {
-      return null;
-    }
-
-    final sourceFile = File(selected.path);
+    final sourceFile = File(sourcePath);
     final workspace = await _createWorkspace();
 
     try {
@@ -64,23 +97,52 @@ final class MdwVersionConverter {
         }
       }
 
-      final sourceName = path.basenameWithoutExtension(sourceFile.path);
-      final location = await getSaveLocation(
-        suggestedName: '${sourceName}_v$targetVersion',
-        acceptedTypeGroups: const <XTypeGroup>[_projectType],
-      );
-      if (location == null) {
-        return null;
+      final outputPath = switch (mode) {
+        MdwConversionMode.replaceSource => sourceFile.path,
+        MdwConversionMode.saveCopy => await _pickCopyDestination(
+            sourceFile,
+            targetVersion,
+          ),
+      };
+      if (outputPath == null) return null;
+
+      final normalizedOutput = _normalizeMdwPath(outputPath);
+      final temporaryOutput = mode == MdwConversionMode.replaceSource
+          ? File('$normalizedOutput.converting')
+          : File(normalizedOutput);
+
+      await _writeArchive(workspace, temporaryOutput);
+
+      if (mode == MdwConversionMode.replaceSource) {
+        if (await sourceFile.exists()) {
+          await sourceFile.delete();
+        }
+        await temporaryOutput.rename(sourceFile.path);
       }
 
-      final outputPath = _normalizeMdwPath(location.path);
-      await _writeArchive(workspace, File(outputPath));
-      return outputPath;
+      return MdwConversionResult(
+        sourcePath: sourceFile.path,
+        outputPath: mode == MdwConversionMode.replaceSource
+            ? sourceFile.path
+            : normalizedOutput,
+        sourceVersion: sourceVersion,
+        targetVersion: targetVersion,
+        mode: mode,
+      );
     } finally {
       if (await workspace.exists()) {
         await workspace.delete(recursive: true);
       }
     }
+  }
+
+  Future<String?> _pickCopyDestination(File sourceFile, int targetVersion) async {
+    final sourceName = path.basenameWithoutExtension(sourceFile.path);
+    final location = await getSaveLocation(
+      suggestedName: '${sourceName}_v$targetVersion',
+      acceptedTypeGroups: const <XTypeGroup>[_projectType],
+    );
+    return location?.path;
   }
 
   Future<int> inspectVersion(String projectPath) async {
@@ -98,9 +160,7 @@ final class MdwVersionConverter {
   Future<void> _convertToV3(Directory workspace) async {
     final manifest = File(path.join(workspace.path, 'manifest.yaml'));
     final title = await _readTitle(manifest) ?? 'Untitled book';
-    final legacyBook = File(
-      path.join(workspace.path, 'content', 'book.md'),
-    );
+    final legacyBook = File(path.join(workspace.path, 'content', 'book.md'));
     final chaptersDirectory = Directory(
       path.join(workspace.path, 'content', 'chapters'),
     );
@@ -109,7 +169,7 @@ final class MdwVersionConverter {
     await chaptersDirectory.create(recursive: true);
 
     if (await legacyBook.exists()) {
-      final chapters = <Map<String, String>>[];
+      final chapters = <Map<String, Object?>>[];
       IOSink? sink;
       var ordinal = 0;
 
@@ -122,10 +182,11 @@ final class MdwVersionConverter {
         ordinal++;
         final id = 'chapter-${ordinal.toString().padLeft(4, '0')}';
         final fileName = '$id.md';
-        chapters.add(<String, String>{
+        chapters.add(<String, Object?>{
           'id': id,
           'title': chapterTitle,
           'file': fileName,
+          'parentId': null,
         });
         sink = File(path.join(chaptersDirectory.path, fileName)).openWrite();
         sink!.writeln('<!-- chapter: ${_safeDirectiveTitle(chapterTitle)} -->');
@@ -147,15 +208,11 @@ final class MdwVersionConverter {
           continue;
         }
 
-        if (sink == null) {
-          await startChapter(title);
-        }
+        if (sink == null) await startChapter(title);
         sink!.writeln(line);
       }
 
-      if (sink == null) {
-        await startChapter(title);
-      }
+      if (sink == null) await startChapter(title);
       await sink!.flush();
       await sink!.close();
 
@@ -204,9 +261,7 @@ final class MdwVersionConverter {
           throw const FormatException('Chapter file name is missing.');
         }
 
-        if (index > 0) {
-          buffer.write('\n\n');
-        }
+        if (index > 0) buffer.write('\n\n');
         buffer.write(
           await File(path.join(chaptersDirectory.path, fileName)).readAsString(),
         );
@@ -218,9 +273,7 @@ final class MdwVersionConverter {
     }
 
     final settingsFile = File(path.join(workspace.path, 'settings.json'));
-    if (await settingsFile.exists()) {
-      await settingsFile.delete();
-    }
+    if (await settingsFile.exists()) await settingsFile.delete();
 
     final historyDirectory = Directory(path.join(workspace.path, 'history'));
     if (await historyDirectory.exists()) {
@@ -265,9 +318,7 @@ final class MdwVersionConverter {
       recursive: true,
       followLinks: false,
     )) {
-      if (entity is! File) {
-        continue;
-      }
+      if (entity is! File) continue;
 
       final relative = path
           .relative(entity.path, from: workspace.path)
@@ -291,8 +342,7 @@ final class MdwVersionConverter {
       throw const FormatException('Invalid manifest.yaml.');
     }
 
-    final value = document['version'];
-    final version = int.tryParse(value?.toString() ?? '');
+    final version = int.tryParse(document['version']?.toString() ?? '');
     if (version == null) {
       throw const FormatException('The MDW format version is missing or invalid.');
     }
@@ -300,15 +350,9 @@ final class MdwVersionConverter {
   }
 
   Future<String?> _readTitle(File manifest) async {
-    if (!await manifest.exists()) {
-      return null;
-    }
-
+    if (!await manifest.exists()) return null;
     final document = loadYaml(await manifest.readAsString());
-    if (document is! YamlMap) {
-      return null;
-    }
-
+    if (document is! YamlMap) return null;
     final value = document['title']?.toString().trim();
     return value == null || value.isEmpty ? null : value;
   }
@@ -335,7 +379,7 @@ final class MdwVersionConverter {
       'title: ${jsonEncode(title)}\n'
       'template:\n'
       '  id: markweft.simple\n'
-      '  version: 0.3.0\n'
+      '  version: 0.4.0\n'
       'settings: settings.json\n'
       'content: content/chapters/index.json\n'
       'assets: assets\n'
