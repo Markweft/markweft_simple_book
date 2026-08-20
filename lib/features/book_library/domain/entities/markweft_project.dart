@@ -44,4 +44,16 @@ final class MarkweftProject {
   Directory get filesDirectory => Directory(
         '${workspace.path}${Platform.pathSeparator}files',
       );
+
+  Directory get historyDirectory => Directory(
+        '${workspace.path}${Platform.pathSeparator}history',
+      );
+
+  Directory get historyObjectsDirectory => Directory(
+        '${historyDirectory.path}${Platform.pathSeparator}objects',
+      );
+
+  Directory get historyCommitsDirectory => Directory(
+        '${historyDirectory.path}${Platform.pathSeparator}commits',
+      );
 }
