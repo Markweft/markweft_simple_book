@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:markweft_simple_book/core/ui/dialogs/book_title_dialog.dart';
 import 'package:markweft_simple_book/core/ui/theme/markweft_theme.dart';
+import 'package:markweft_simple_book/core/ui/theme/theme_mode_store.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/pages/book_editor_page.dart';
 import 'package:markweft_simple_book/features/book_library/data/repositories/mdw_book_project_repository.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/macos_security_scoped_bookmark_service.dart';
@@ -24,11 +25,13 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
   final MacosSecurityScopedBookmarkService _bookmarkService =
       const MacosSecurityScopedBookmarkService();
+  final ThemeModeStore _themeModeStore = const ThemeModeStore();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   MarkweftProject? _activeProject;
   String? _activeSecurityScopedPath;
   List<String> _recentProjects = const <String>[];
+  ThemeMode _themeMode = ThemeMode.system;
   bool _isBusy = false;
   String? _errorMessage;
 
@@ -36,6 +39,25 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   void initState() {
     super.initState();
     _loadRecentProjects();
+    _loadThemeMode();
+  }
+
+  Future<void> _loadThemeMode() async {
+    final mode = await _themeModeStore.load();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _themeMode = mode);
+  }
+
+  Future<void> _setThemeMode(ThemeMode mode) async {
+    if (_themeMode == mode) {
+      return;
+    }
+
+    setState(() => _themeMode = mode);
+    await _themeModeStore.save(mode);
   }
 
   Future<void> _loadRecentProjects() async {
@@ -232,7 +254,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       debugShowCheckedModeBanner: false,
       theme: MarkweftTheme.light(),
       darkTheme: MarkweftTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: _themeMode,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       supportedLocales: const [
         Locale('en'),
@@ -243,6 +265,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
               isBusy: _isBusy,
               errorMessage: _errorMessage,
               recentProjects: _recentProjects,
+              themeMode: _themeMode,
+              onThemeModeChanged: _setThemeMode,
               onCreateBook: _createProject,
               onOpenBook: _pickProject,
               onImportMarkdown: _importMarkdown,
