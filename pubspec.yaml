@@ -19,7 +19,6 @@ dependencies:
   archive: ^4.0.7
   crypto: ^3.0.6
   file_selector: ^1.0.3
-  markdown: ^7.3.0
   markdown_widget: ^2.3.2+8
   path: ^1.9.1
   path_provider: ^2.1.5
