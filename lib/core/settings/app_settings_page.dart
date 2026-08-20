@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:markweft_simple_book/core/settings/app_settings.dart';
+import 'package:markweft_simple_book/i18n/strings.g.dart';
 
 final class AppSettingsPage extends StatefulWidget {
   const AppSettingsPage({
@@ -22,20 +23,30 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
     _settings = widget.settings;
   }
 
+  Future<void> _previewLanguage(String languageCode) async {
+    if (languageCode == 'system') {
+      LocaleSettings.useDeviceLocale();
+      return;
+    }
+
+    await LocaleSettings.setLocaleRaw(languageCode);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final tr = Translations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('App settings'),
+        title: Text(tr.settings.title),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsetsDirectional.only(end: 12),
             child: FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(_settings),
               icon: const Icon(Icons.check_rounded, size: 18),
-              label: const Text('Done'),
+              label: Text(tr.app.done),
             ),
           ),
         ],
@@ -47,29 +58,29 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 44),
             children: [
               _SettingsSection(
-                title: 'Appearance',
-                subtitle: 'Choose how Markweft looks on this device.',
+                title: tr.settings.appearance,
+                subtitle: tr.settings.appearanceDescription,
                 child: Column(
                   children: [
                     _SettingRow(
                       icon: Icons.palette_outlined,
-                      title: 'Theme mode',
-                      subtitle: 'Follow the system or use a fixed appearance.',
+                      title: tr.settings.themeMode,
+                      subtitle: tr.settings.themeModeDescription,
                       trailing: DropdownButton<ThemeMode>(
                         value: _settings.themeMode,
                         underline: const SizedBox.shrink(),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: ThemeMode.system,
-                            child: Text('System'),
+                            child: Text(tr.app.system),
                           ),
                           DropdownMenuItem(
                             value: ThemeMode.light,
-                            child: Text('Light'),
+                            child: Text(tr.app.light),
                           ),
                           DropdownMenuItem(
                             value: ThemeMode.dark,
-                            child: Text('Dark'),
+                            child: Text(tr.app.dark),
                           ),
                         ],
                         onChanged: (value) {
@@ -85,37 +96,47 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
               ),
               const SizedBox(height: 16),
               _SettingsSection(
-                title: 'Language & region',
-                subtitle: 'Set the application interface language.',
+                title: tr.settings.languageRegion,
+                subtitle: tr.settings.languageRegionDescription,
                 child: _SettingRow(
                   icon: Icons.language_rounded,
-                  title: 'App language',
-                  subtitle: 'System uses the language selected in macOS.',
+                  title: tr.settings.appLanguage,
+                  subtitle: tr.settings.appLanguageDescription,
                   trailing: DropdownButton<String>(
                     value: _settings.languageCode,
                     underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: 'system', child: Text('System')),
-                      DropdownMenuItem(value: 'en', child: Text('English')),
-                      DropdownMenuItem(value: 'ar', child: Text('العربية')),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'system',
+                        child: Text(tr.app.system),
+                      ),
+                      DropdownMenuItem(
+                        value: 'en',
+                        child: Text(tr.app.english),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ar',
+                        child: Text(tr.app.arabic),
+                      ),
                     ],
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       if (value == null) return;
                       setState(() {
                         _settings = _settings.copyWith(languageCode: value);
                       });
+                      await _previewLanguage(value);
                     },
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               _SettingsSection(
-                title: 'Privacy & workspace',
-                subtitle: 'Control what is shown on the welcome screen.',
+                title: tr.settings.privacyWorkspace,
+                subtitle: tr.settings.privacyWorkspaceDescription,
                 child: _SettingRow(
                   icon: Icons.folder_outlined,
-                  title: 'Show recent book paths',
-                  subtitle: 'Display full local file paths in Recent books.',
+                  title: tr.settings.showRecentPaths,
+                  subtitle: tr.settings.showRecentPathsDescription,
                   trailing: Switch(
                     value: _settings.showRecentBookPaths,
                     onChanged: (value) {
@@ -129,12 +150,12 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
               ),
               const SizedBox(height: 16),
               _SettingsSection(
-                title: 'Safety',
-                subtitle: 'Protect destructive actions while editing books.',
+                title: tr.settings.safety,
+                subtitle: tr.settings.safetyDescription,
                 child: _SettingRow(
                   icon: Icons.shield_outlined,
-                  title: 'Confirm destructive actions',
-                  subtitle: 'Ask before deleting chapters or history versions.',
+                  title: tr.settings.confirmDestructive,
+                  subtitle: tr.settings.confirmDestructiveDescription,
                   trailing: Switch(
                     value: _settings.confirmDestructiveActions,
                     onChanged: (value) {
@@ -157,12 +178,14 @@ final class _AppSettingsPageState extends State<AppSettingsPage> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline_rounded,
-                        color: scheme.onSurfaceVariant),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: scheme.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Book-specific page, typography and publication settings remain inside each .mdw book.',
+                        tr.settings.bookSettingsNote,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
