@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  patch-mdw-atomic-save:
+  patch-mdw-reopen:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,77 +17,156 @@ jobs:
           ref: feature/book-settings-chapters
           fetch-depth: 0
 
-      - name: Patch atomic MDW persistence
+      - name: Patch recent-book validation
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          repo = Path('lib/features/book_library/data/repositories/mdw_book_project_repository.dart')
-          text = repo.read_text()
-          original = text
+          path = Path('lib/app/markweft_app.dart')
+          text = path.read_text()
+          old = '''  Future<void> _openRecentProject(String projectPath) async {
+    final version = _recentProjectVersions[projectPath] ??
+        await _recentProjectsStore.versionFor(projectPath);
+    if (version != null && version != MdwVersionConverter.currentVersion) {
+      await _convertBookVersion(
+        sourcePath: projectPath,
+        targetVersion: MdwVersionConverter.currentVersion,
+      );
+      return;
+    }
 
-          import_marker = "import 'package:markweft_simple_book/features/book_library/data/services/mdw_version_converter.dart';\n"
-          atomic_import = "import 'package:markweft_simple_book/features/book_library/data/services/mdw_atomic_file_service.dart';\n"
-          if atomic_import not in text:
-              text = text.replace(import_marker, atomic_import + import_marker, 1)
+    if (Platform.isMacOS) {
+      final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
+      if (bookmark == null) {
+        setState(() => _errorMessage = t.welcome.errors.legacyBookmark);
+        return;
+      }
 
-          class_marker = 'final class MdwBookProjectRepository implements BookProjectRepository {\n'
-          field = '  static const MdwAtomicFileService _atomicFileService = MdwAtomicFileService();\n\n'
-          if field not in text:
-              text = text.replace(class_marker, class_marker + field, 1)
+      try {
+        final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
+        _activeSecurityScopedPath = resolvedPath;
+        await _runProjectAction(
+          () => _projectRepository.openProject(resolvedPath),
+          knownVersion: version,
+          recentPath: projectPath,
+        );
+        return;
+      } on Object catch (error) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = t.welcome.errors.bookmarkRestore(error: '$error');
+        });
+        return;
+      }
+    }
 
-          text = text.replace(
-              "  Future<MarkweftProject> openProject(String projectPath) async {\n    final projectFile = File(projectPath);\n",
-              "  Future<MarkweftProject> openProject(String projectPath) async {\n    final projectFile = await _atomicFileService.recoverIfNeeded(File(projectPath));\n",
-              1,
-          )
-          text = text.replace(
-              '    final encoded = ZipEncoder().encode(archive);\n    await project.file.writeAsBytes(encoded, flush: true);\n',
-              '    final encoded = ZipEncoder().encode(archive);\n    await _atomicFileService.write(project.file, encoded);\n',
-              1,
-          )
-          if text != original:
-              repo.write_text(text)
+    await _runProjectAction(
+      () => _projectRepository.openProject(projectPath),
+      knownVersion: version,
+    );
+  }
+'''
+          new = '''  Future<void> _openRecentProject(String projectPath) async {
+    if (Platform.isMacOS) {
+      final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
+      if (bookmark == null) {
+        setState(() => _errorMessage = t.welcome.errors.legacyBookmark);
+        return;
+      }
 
-          converter = Path('lib/features/book_library/data/services/mdw_version_converter.dart')
-          text = converter.read_text()
-          original = text
+      String? resolvedPath;
+      try {
+        resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
+        final actualVersion = await _versionConverter.inspectVersion(resolvedPath);
+        await _recentProjectsStore.cacheVersion(projectPath, actualVersion);
 
-          import_marker = "import 'package:file_selector/file_selector.dart';\n"
-          atomic_import = "import 'package:markweft_simple_book/features/book_library/data/services/mdw_atomic_file_service.dart';\n"
-          if atomic_import not in text:
-              text = text.replace(import_marker, import_marker + atomic_import, 1)
+        if (!mounted) {
+          await _bookmarkService.stopAccessing(resolvedPath);
+          return;
+        }
 
-          class_marker = 'final class MdwVersionConverter {\n  const MdwVersionConverter();\n\n'
-          field = '  static const MdwAtomicFileService _atomicFileService = MdwAtomicFileService();\n\n'
-          if field not in text:
-              text = text.replace(class_marker, class_marker + field, 1)
+        setState(() {
+          _recentProjectVersions = <String, int?>{
+            ..._recentProjectVersions,
+            projectPath: actualVersion,
+          };
+        });
 
-          text = text.replace(
-              '    final sourceFile = File(sourcePath);\n    final workspace = await _createWorkspace();\n',
-              '    final sourceFile = await _atomicFileService.recoverIfNeeded(File(sourcePath));\n    final workspace = await _createWorkspace();\n',
-              1,
-          )
-          text = text.replace(
-              '    try {\n      await _extract(File(projectPath), workspace);\n      return _readVersion(workspace);\n',
-              '    try {\n      final projectFile = await _atomicFileService.recoverIfNeeded(File(projectPath));\n      await _extract(projectFile, workspace);\n      return _readVersion(workspace);\n',
-              1,
-          )
-          if text != original:
-              converter.write_text(text)
+        if (actualVersion != MdwVersionConverter.currentVersion) {
+          await _bookmarkService.stopAccessing(resolvedPath);
+          resolvedPath = null;
+          await _convertBookVersion(
+            sourcePath: projectPath,
+            targetVersion: MdwVersionConverter.currentVersion,
+          );
+          return;
+        }
+
+        _activeSecurityScopedPath = resolvedPath;
+        await _runProjectAction(
+          () => _projectRepository.openProject(resolvedPath!),
+          knownVersion: actualVersion,
+          recentPath: projectPath,
+        );
+        return;
+      } on Object catch (error) {
+        if (resolvedPath != null) {
+          await _bookmarkService.stopAccessing(resolvedPath);
+          if (_activeSecurityScopedPath == resolvedPath) {
+            _activeSecurityScopedPath = null;
+          }
+        }
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = t.welcome.errors.bookmarkRestore(error: '$error');
+        });
+        return;
+      }
+    }
+
+    try {
+      final actualVersion = await _versionConverter.inspectVersion(projectPath);
+      await _recentProjectsStore.cacheVersion(projectPath, actualVersion);
+
+      if (!mounted) return;
+      setState(() {
+        _recentProjectVersions = <String, int?>{
+          ..._recentProjectVersions,
+          projectPath: actualVersion,
+        };
+      });
+
+      if (actualVersion != MdwVersionConverter.currentVersion) {
+        await _convertBookVersion(
+          sourcePath: projectPath,
+          targetVersion: MdwVersionConverter.currentVersion,
+        );
+        return;
+      }
+
+      await _runProjectAction(
+        () => _projectRepository.openProject(projectPath),
+        knownVersion: actualVersion,
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = t.welcome.errors.openBook(error: '$error');
+      });
+    }
+  }
+'''
+          if old not in text:
+              raise SystemExit('recent-project method marker not found')
+          path.write_text(text.replace(old, new, 1))
           PY
 
       - name: Commit patch
         run: |
-          if git diff --quiet; then
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/features/book_library/data/repositories/mdw_book_project_repository.dart \
-                  lib/features/book_library/data/services/mdw_version_converter.dart \
-                  lib/features/book_library/data/services/mdw_atomic_file_service.dart
-          git commit -m "Fix MDW corruption on abrupt app exit"
+          git add lib/app/markweft_app.dart
+          git commit -m "Validate actual MDW version when reopening recent books" || exit 0
           git push origin HEAD:feature/book-settings-chapters
 
   flutter:
