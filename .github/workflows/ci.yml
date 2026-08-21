@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   patch-mdw-atomic-save:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/book-settings-chapters'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
