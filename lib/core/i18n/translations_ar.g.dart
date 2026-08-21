@@ -333,6 +333,17 @@ class Translations$editor$workspace$ar extends Translations$editor$workspace$en 
 	// Translations
 	@override late final Translations$editor$workspace$modes$ar modes = Translations$editor$workspace$modes$ar._(_root);
 	@override late final Translations$editor$workspace$markdown$ar markdown = Translations$editor$workspace$markdown$ar._(_root);
+	@override String get canvasTitle => 'لوحة الصفحات المرئية';
+	@override String canvasPage({required Object current, required Object total}) => 'الصفحة ${current} من ${total}';
+	@override String get canvasPages => 'الصفحات';
+	@override String get canvasPagePrevious => 'الصفحة السابقة';
+	@override String get canvasPageNext => 'الصفحة التالية';
+	@override String get canvasZoomIn => 'تكبير';
+	@override String get canvasZoomOut => 'تصغير';
+	@override String get canvasResetZoom => 'إعادة الضبط إلى 100%';
+	@override String get canvasFitWidth => 'ملاءمة العرض';
+	@override String get canvasFitPage => 'ملاءمة الصفحة';
+	@override String get canvasEmpty => 'لا توجد صفحات للعرض';
 }
 
 // Path: editor.sidebar
@@ -832,6 +843,7 @@ class Translations$editor$workspace$modes$ar extends Translations$editor$workspa
 
 	// Translations
 	@override String get edit => 'تحرير';
+	@override String get canvas => 'لوحة الصفحات';
 	@override String get preview => 'معاينة';
 }
 

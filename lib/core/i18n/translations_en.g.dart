@@ -479,6 +479,39 @@ class Translations$editor$workspace$en {
 	// Translations
 	late final Translations$editor$workspace$modes$en modes = Translations$editor$workspace$modes$en.internal(_root);
 	late final Translations$editor$workspace$markdown$en markdown = Translations$editor$workspace$markdown$en.internal(_root);
+
+	/// en: 'Visual canvas'
+	String get canvasTitle => 'Visual canvas';
+
+	/// en: 'Page {current} of {total}'
+	String canvasPage({required Object current, required Object total}) => 'Page ${current} of ${total}';
+
+	/// en: 'Pages'
+	String get canvasPages => 'Pages';
+
+	/// en: 'Previous page'
+	String get canvasPagePrevious => 'Previous page';
+
+	/// en: 'Next page'
+	String get canvasPageNext => 'Next page';
+
+	/// en: 'Zoom in'
+	String get canvasZoomIn => 'Zoom in';
+
+	/// en: 'Zoom out'
+	String get canvasZoomOut => 'Zoom out';
+
+	/// en: 'Reset to 100%'
+	String get canvasResetZoom => 'Reset to 100%';
+
+	/// en: 'Fit width'
+	String get canvasFitWidth => 'Fit width';
+
+	/// en: 'Fit page'
+	String get canvasFitPage => 'Fit page';
+
+	/// en: 'No pages to display'
+	String get canvasEmpty => 'No pages to display';
 }
 
 // Path: editor.sidebar
@@ -1277,6 +1310,9 @@ class Translations$editor$workspace$modes$en {
 
 	/// en: 'Edit'
 	String get edit => 'Edit';
+
+	/// en: 'Canvas'
+	String get canvas => 'Canvas';
 
 	/// en: 'Preview'
 	String get preview => 'Preview';
