@@ -77,9 +77,6 @@ jobs:
               converter.write_text(text)
           PY
 
-      - name: Format
-        run: dart format lib/features/book_library/data/repositories/mdw_book_project_repository.dart lib/features/book_library/data/services/mdw_version_converter.dart lib/features/book_library/data/services/mdw_atomic_file_service.dart
-
       - name: Commit patch
         run: |
           if git diff --quiet; then
