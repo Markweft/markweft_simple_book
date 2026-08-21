@@ -383,6 +383,7 @@ class Translations$editor$previewPanel$ar extends Translations$editor$previewPan
 	// Translations
 	@override late final Translations$editor$previewPanel$format$ar format = Translations$editor$previewPanel$format$ar._(_root);
 	@override late final Translations$editor$previewPanel$scope$ar scope = Translations$editor$previewPanel$scope$ar._(_root);
+	@override String openCurrentChapter({required Object title}) => 'فتح الفصل الحالي: ${title}';
 	@override String get refreshFullBook => 'تحديث معاينة الكتاب كاملاً';
 	@override String get loadFullBookFailed => 'تعذر تحميل معاينة الكتاب كاملاً.';
 	@override String get epubReflowable => 'EPUB · معاينة مرنة';
@@ -659,7 +660,7 @@ class Translations$welcome$recent$ar extends Translations$welcome$recent$en {
 	@override String version({required Object version}) => 'MDW v${version}';
 	@override String get current => 'الحالي';
 	@override String upgrade({required Object version}) => 'ترقية إلى v${version}';
-	@override String get unknownVersion => 'الإصدار غير متاح';
+	@override String get unknownVersion => 'سيتم اكتشاف الإصدار عند الفتح';
 }
 
 // Path: welcome.conversion

@@ -1116,7 +1116,7 @@ final class _ChapterTitleDialogState extends State<_ChapterTitleDialog> {
         controller: _controller,
         autofocus: true,
         decoration: InputDecoration(
-          labelText: tr.dialogs.chapterTitle.fieldLabel,
+          labelText: tr.dialogs.chapterTitle,
         ),
         onSubmitted: (_) => _submit(),
       ),

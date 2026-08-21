@@ -569,6 +569,9 @@ class Translations$editor$previewPanel$en {
 	late final Translations$editor$previewPanel$format$en format = Translations$editor$previewPanel$format$en.internal(_root);
 	late final Translations$editor$previewPanel$scope$en scope = Translations$editor$previewPanel$scope$en.internal(_root);
 
+	/// en: 'Open current: {title}'
+	String openCurrentChapter({required Object title}) => 'Open current: ${title}';
+
 	/// en: 'Refresh full-book preview'
 	String get refreshFullBook => 'Refresh full-book preview';
 
@@ -1000,8 +1003,8 @@ class Translations$welcome$recent$en {
 	/// en: 'Upgrade to v{version}'
 	String upgrade({required Object version}) => 'Upgrade to v${version}';
 
-	/// en: 'Version unavailable'
-	String get unknownVersion => 'Version unavailable';
+	/// en: 'Detect version on open'
+	String get unknownVersion => 'Detect version on open';
 }
 
 // Path: welcome.conversion
