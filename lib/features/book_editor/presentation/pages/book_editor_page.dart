@@ -43,8 +43,7 @@ final class BookEditorPage extends StatefulWidget {
 final class _BookEditorPageState extends State<BookEditorPage> {
   static const int _livePreviewCharacterLimit = 350000;
   static const BookExportService _exportService = BookExportService();
-  static const BookCompilationService _compilationService =
-  BookCompilationService();
+  static const BookCompilationService _compilationService = BookCompilationService();
   static const BookHistoryService _historyService = BookHistoryService();
 
   late final TextEditingController _controller;
@@ -53,23 +52,36 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   Timer? _projectFlushDebounce;
 
   List<BookChapterFile> _chapters = const <BookChapterFile>[];
+  final List<String> _openChapterIds = <String>[];
   BookChapterFile? _activeChapter;
   BookSettings _bookSettings = const BookSettings();
   BookWorkspaceMode _workspaceMode = BookWorkspaceMode.edit;
+
   String _draftMarkdown = '';
   String _previewMarkdown = '';
   String? _pendingMarkdown;
   String? _errorMessage;
+
   bool _saveInProgress = false;
   bool _exportInProgress = false;
   bool _settingsInProgress = false;
   bool _largeChapterPreviewPaused = false;
   bool _sidebarVisible = true;
   bool _previewVisible = true;
+
+  double _sidebarWidth = 286;
+  double _previewWidth = 520;
+
   Completer<void>? _saveCompleter;
   SaveStatus _saveStatus = SaveStatus.loading;
 
   BookTemplate get _template => TemplateRegistry.resolve(_bookSettings.templateId);
+
+  List<BookChapterFile> get _openChapters => [
+        for (final id in _openChapterIds)
+          if (_chapters.where((chapter) => chapter.id == id).firstOrNull case final chapter?)
+            chapter,
+      ];
 
   @override
   void initState() {
@@ -114,6 +126,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         _bookSettings = settings;
         _chapters = chapters;
         _activeChapter = first;
+        _openChapterIds
+          ..clear()
+          ..add(first.id);
         _setLoadedMarkdown(markdown);
         _saveStatus = SaveStatus.saved;
         _errorMessage = null;
@@ -148,14 +163,14 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     _saveDebounce?.cancel();
     _saveDebounce = Timer(
       const Duration(milliseconds: 500),
-          () => unawaited(_queueSave(value)),
+      () => unawaited(_queueSave(value)),
     );
 
     _previewDebounce?.cancel();
     if (!_largeChapterPreviewPaused) {
       _previewDebounce = Timer(
         const Duration(milliseconds: 300),
-            () {
+        () {
           if (mounted) setState(() => _previewMarkdown = _draftMarkdown);
         },
       );
@@ -225,7 +240,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     _projectFlushDebounce?.cancel();
     _projectFlushDebounce = Timer(
       const Duration(seconds: 5),
-          () => unawaited(_flushProject()),
+      () => unawaited(_flushProject()),
     );
   }
 
@@ -259,6 +274,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     if (chapter.id == _activeChapter?.id || _saveStatus == SaveStatus.loading) {
       return;
     }
+
     await _saveNow(flushProject: false);
     if (!mounted || _saveStatus == SaveStatus.failed) return;
 
@@ -274,6 +290,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
         selection: const TextSelection.collapsed(offset: 0),
       );
       setState(() {
+        if (!_openChapterIds.contains(chapter.id)) {
+          _openChapterIds.add(chapter.id);
+        }
         _activeChapter = chapter;
         _setLoadedMarkdown(markdown);
         _saveStatus = SaveStatus.saved;
@@ -290,6 +309,27 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             .openChapter(error: '$error');
       });
     }
+  }
+
+  Future<void> _closeChapterTab(BookChapterFile chapter) async {
+    if (_openChapterIds.length <= 1) return;
+
+    if (_activeChapter?.id == chapter.id) {
+      await _saveNow(flushProject: false);
+      if (!mounted || _saveStatus == SaveStatus.failed) return;
+
+      final index = _openChapterIds.indexOf(chapter.id);
+      final fallbackIndex = index > 0 ? index - 1 : 1;
+      final fallbackId = _openChapterIds[fallbackIndex];
+      final fallback = _chapters.where((item) => item.id == fallbackId).firstOrNull;
+      if (fallback != null) {
+        _openChapterIds.remove(chapter.id);
+        await _selectChapter(fallback);
+        return;
+      }
+    }
+
+    setState(() => _openChapterIds.remove(chapter.id));
   }
 
   Future<void> _addChapter({String? parentId}) async {
@@ -375,6 +415,8 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
     final deletedIds = <String>{chapter.id, ...descendants.map((item) => item.id)};
     final activeDeleted = deletedIds.contains(_activeChapter?.id);
+    _openChapterIds.removeWhere(deletedIds.contains);
+
     await widget.projectRepository.deleteChapterTree(widget.project, chapter);
     final chapters = await widget.projectRepository.loadChapters(widget.project);
     if (!mounted) return;
@@ -522,8 +564,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
 
     final extension = format == BookOutputFormat.pdf ? 'pdf' : 'epub';
     final location = await getSaveLocation(
-      suggestedName:
-      '${path.basenameWithoutExtension(widget.project.file.path)}.$extension',
+      suggestedName: '${path.basenameWithoutExtension(widget.project.file.path)}.$extension',
       acceptedTypeGroups: <XTypeGroup>[
         XTypeGroup(label: extension.toUpperCase(), extensions: [extension]),
       ],
@@ -559,9 +600,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       final label = format == BookOutputFormat.pdf ? 'PDF' : 'EPUB';
       _showMessage(
         Translations.of(context).editor.export.success(
-          format: label,
-          path: location.path,
-        ),
+              format: label,
+              path: location.path,
+            ),
       );
     } on Object catch (error) {
       if (!mounted) return;
@@ -595,13 +636,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     var parentId = chapter.parentId;
     final visited = <String>{};
     while (parentId != null && visited.add(parentId)) {
-      BookChapterFile? parent;
-      for (final item in _chapters) {
-        if (item.id == parentId) {
-          parent = item;
-          break;
-        }
-      }
+      final parent = _chapters.where((item) => item.id == parentId).firstOrNull;
       if (parent == null) break;
       depth++;
       parentId = parent.parentId;
@@ -609,12 +644,24 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     return depth;
   }
 
+  void _resizeSidebar(double delta) {
+    setState(() {
+      _sidebarWidth = (_sidebarWidth + delta).clamp(220.0, 520.0);
+    });
+  }
+
+  void _resizePreview(double delta) {
+    setState(() {
+      _previewWidth = (_previewWidth - delta).clamp(320.0, 900.0);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final activeIndex = _chapters.indexWhere(
-          (chapter) => chapter.id == _activeChapter?.id,
+      (chapter) => chapter.id == _activeChapter?.id,
     );
 
     return Scaffold(
@@ -659,12 +706,12 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                   ),
                   Text(
                     '${_activeChapter?.title ?? tr.editor.chapterManager.loading} · '
-                        '${_template.metadata.name} v${_template.metadata.version}',
+                    '${_template.metadata.name} v${_template.metadata.version}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                          color: scheme.onSurfaceVariant,
+                        ),
                   ),
                 ],
               ),
@@ -690,9 +737,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           const SizedBox(width: 4),
           SegmentedButton<BookWorkspaceMode>(
             showSelectedIcon: false,
-            style: ButtonStyle(
+            style: const ButtonStyle(
               visualDensity: VisualDensity.compact,
-              padding: const WidgetStatePropertyAll(
+              padding: WidgetStatePropertyAll(
                 EdgeInsets.symmetric(horizontal: 8),
               ),
             ),
@@ -742,9 +789,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             onSelected: (format) => unawaited(_exportBook(format)),
             icon: _exportInProgress
                 ? const SizedBox.square(
-              dimension: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.ios_share_outlined),
             itemBuilder: (context) => [
               if (_template.metadata.supportsPdf)
@@ -790,103 +837,111 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             child: _saveStatus == SaveStatus.loading
                 ? const Center(child: CircularProgressIndicator())
                 : LayoutBuilder(
-              builder: (context, constraints) {
-                final sidebar = _BookSidebar(
-                  chapters: _chapters,
-                  activeChapterId: _activeChapter?.id,
-                  depthOf: _depthOf,
-                  onClose: () => setState(() => _sidebarVisible = false),
-                  onOpenAppSettings: widget.onOpenAppSettings,
-                  onOpenSettings: _showBookSettings,
-                  onOpenHistory: _openHistory,
-                  onAddChapter: () => _addChapter(),
-                  onAddChild: (chapter) => _addChapter(parentId: chapter.id),
-                  onSelectChapter: _selectChapter,
-                  onRenameChapter: _renameChapter,
-                  onDeleteChapter: _deleteChapter,
-                  onMoveChapterUp: (chapter) => _moveChapter(chapter, -1),
-                  onMoveChapterDown: (chapter) => _moveChapter(chapter, 1),
-                  onReorder: _reorderChapters,
-                );
-                final editor = _EditorSurface(
-                  title: _activeChapter?.title ?? tr.editor.workspace.markdown.title,
-                  onClosePreview: _previewVisible
-                      ? () => setState(() => _previewVisible = false)
-                      : null,
-                  child: _MarkdownEditor(
-                    controller: _controller,
-                    chapterTitle: _activeChapter?.title,
-                    actions: _template.metadata.toolbarActions,
-                    onChanged: _onMarkdownChanged,
+                    builder: (context, constraints) {
+                      final sidebar = _BookSidebar(
+                        chapters: _chapters,
+                        activeChapterId: _activeChapter?.id,
+                        depthOf: _depthOf,
+                        onClose: () => setState(() => _sidebarVisible = false),
+                        onOpenAppSettings: widget.onOpenAppSettings,
+                        onOpenSettings: _showBookSettings,
+                        onOpenHistory: _openHistory,
+                        onAddChapter: () => _addChapter(),
+                        onAddChild: (chapter) => _addChapter(parentId: chapter.id),
+                        onSelectChapter: _selectChapter,
+                        onRenameChapter: _renameChapter,
+                        onDeleteChapter: _deleteChapter,
+                        onMoveChapterUp: (chapter) => _moveChapter(chapter, -1),
+                        onMoveChapterDown: (chapter) => _moveChapter(chapter, 1),
+                        onReorder: _reorderChapters,
+                      );
+                      final editor = _EditorSurface(
+                        openChapters: _openChapters,
+                        activeChapterId: _activeChapter?.id,
+                        onSelectTab: _selectChapter,
+                        onCloseTab: _closeChapterTab,
+                        child: _MarkdownEditor(
+                          controller: _controller,
+                          chapterTitle: _activeChapter?.title,
+                          actions: _template.metadata.toolbarActions,
+                          onChanged: _onMarkdownChanged,
+                        ),
+                      );
+                      final previewContent = _largeChapterPreviewPaused
+                          ? _LargeChapterPreviewPaused(
+                              characters: _draftMarkdown.length,
+                              onRefresh: () {
+                                setState(() {
+                                  _previewMarkdown = _draftMarkdown;
+                                  _largeChapterPreviewPaused = false;
+                                });
+                              },
+                            )
+                          : BookPreviewPanel(
+                              project: widget.project,
+                              projectRepository: widget.projectRepository,
+                              template: _template,
+                              settings: _bookSettings,
+                              chapterMarkdown: _previewMarkdown,
+                              chapterTitle: _activeChapter?.title,
+                              onBeforeFullBookPreview: () =>
+                                  _saveNow(flushProject: false),
+                            );
+                      final preview = _PreviewSurface(
+                        onClose: _workspaceMode == BookWorkspaceMode.edit
+                            ? () => setState(() => _previewVisible = false)
+                            : null,
+                        child: previewContent,
+                      );
+
+                      final showSidebar = _sidebarVisible && constraints.maxWidth >= 780;
+                      final showPreview = _workspaceMode == BookWorkspaceMode.preview ||
+                          (_previewVisible && constraints.maxWidth >= 940);
+                      final sidebarWidth = _sidebarWidth.clamp(
+                        220.0,
+                        (constraints.maxWidth * 0.42).clamp(220.0, 520.0),
+                      );
+                      final previewWidth = _previewWidth.clamp(
+                        320.0,
+                        (constraints.maxWidth * 0.62).clamp(320.0, 900.0),
+                      );
+
+                      return Row(
+                        children: [
+                          _ActivityRail(
+                            sidebarVisible: showSidebar,
+                            previewVisible: showPreview,
+                            onToggleSidebar: () =>
+                                setState(() => _sidebarVisible = !_sidebarVisible),
+                            onTogglePreview: () => setState(() {
+                              _previewVisible = !_previewVisible;
+                              if (_previewVisible &&
+                                  _workspaceMode == BookWorkspaceMode.preview) {
+                                _workspaceMode = BookWorkspaceMode.edit;
+                              }
+                            }),
+                            onOpenHistory: _openHistory,
+                            onOpenSettings: _showBookSettings,
+                            onOpenAppSettings: widget.onOpenAppSettings,
+                          ),
+                          const VerticalDivider(width: 1),
+                          if (showSidebar) ...[
+                            SizedBox(width: sidebarWidth, child: sidebar),
+                            _ResizeHandle(onDrag: _resizeSidebar),
+                          ],
+                          if (_workspaceMode == BookWorkspaceMode.preview)
+                            Expanded(child: preview)
+                          else ...[
+                            Expanded(child: editor),
+                            if (showPreview) ...[
+                              _ResizeHandle(onDrag: _resizePreview),
+                              SizedBox(width: previewWidth, child: preview),
+                            ],
+                          ],
+                        ],
+                      );
+                    },
                   ),
-                );
-                final previewContent = _largeChapterPreviewPaused
-                    ? _LargeChapterPreviewPaused(
-                  characters: _draftMarkdown.length,
-                  onRefresh: () {
-                    setState(() {
-                      _previewMarkdown = _draftMarkdown;
-                      _largeChapterPreviewPaused = false;
-                    });
-                  },
-                )
-                    : BookPreviewPanel(
-                  project: widget.project,
-                  projectRepository: widget.projectRepository,
-                  template: _template,
-                  settings: _bookSettings,
-                  chapterMarkdown: _previewMarkdown,
-                  chapterTitle: _activeChapter?.title,
-                  onBeforeFullBookPreview: () =>
-                      _saveNow(flushProject: false),
-                );
-                final preview = _PreviewSurface(
-                  onClose: _workspaceMode == BookWorkspaceMode.edit
-                      ? () => setState(() => _previewVisible = false)
-                      : null,
-                  child: previewContent,
-                );
-
-                final showSidebar = _sidebarVisible && constraints.maxWidth >= 780;
-                final showPreview = _workspaceMode == BookWorkspaceMode.preview ||
-                    (_previewVisible && constraints.maxWidth >= 940);
-
-                return Row(
-                  children: [
-                    _ActivityRail(
-                      sidebarVisible: showSidebar,
-                      previewVisible: showPreview,
-                      onToggleSidebar: () =>
-                          setState(() => _sidebarVisible = !_sidebarVisible),
-                      onTogglePreview: () => setState(() {
-                        _previewVisible = !_previewVisible;
-                        if (_previewVisible &&
-                            _workspaceMode == BookWorkspaceMode.preview) {
-                          _workspaceMode = BookWorkspaceMode.edit;
-                        }
-                      }),
-                      onOpenHistory: _openHistory,
-                      onOpenSettings: _showBookSettings,
-                      onOpenAppSettings: widget.onOpenAppSettings,
-                    ),
-                    const VerticalDivider(width: 1),
-                    if (showSidebar) ...[
-                      SizedBox(width: 286, child: sidebar),
-                      const VerticalDivider(width: 1),
-                    ],
-                    if (_workspaceMode == BookWorkspaceMode.preview)
-                      Expanded(child: preview)
-                    else ...[
-                      Expanded(child: editor),
-                      if (showPreview) ...[
-                        const VerticalDivider(width: 1),
-                        Expanded(child: preview),
-                      ],
-                    ],
-                  ],
-                );
-              },
-            ),
           ),
           _StatusBar(
             activeIndex: activeIndex,
@@ -897,6 +952,33 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             path: widget.project.file.path,
           ),
         ],
+      ),
+    );
+  }
+}
+
+final class _ResizeHandle extends StatelessWidget {
+  const _ResizeHandle({required this.onDrag});
+
+  final ValueChanged<double> onDrag;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
+        child: SizedBox(
+          width: 7,
+          child: Center(
+            child: Container(
+              width: 1,
+              color: scheme.outlineVariant,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -940,8 +1022,9 @@ final class _ActivityRail extends StatelessWidget {
           onPressed: onPressed,
           style: IconButton.styleFrom(
             foregroundColor: selected ? scheme.primary : scheme.onSurfaceVariant,
-            backgroundColor:
-            selected ? scheme.primaryContainer.withValues(alpha: 0.55) : null,
+            backgroundColor: selected
+                ? scheme.primaryContainer.withValues(alpha: 0.55)
+                : null,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
@@ -996,14 +1079,18 @@ final class _ActivityRail extends StatelessWidget {
 
 final class _EditorSurface extends StatelessWidget {
   const _EditorSurface({
-    required this.title,
+    required this.openChapters,
+    required this.activeChapterId,
+    required this.onSelectTab,
+    required this.onCloseTab,
     required this.child,
-    this.onClosePreview,
   });
 
-  final String title;
+  final List<BookChapterFile> openChapters;
+  final String? activeChapterId;
+  final ValueChanged<BookChapterFile> onSelectTab;
+  final ValueChanged<BookChapterFile> onCloseTab;
   final Widget child;
-  final VoidCallback? onClosePreview;
 
   @override
   Widget build(BuildContext context) {
@@ -1012,41 +1099,75 @@ final class _EditorSurface extends StatelessWidget {
       color: scheme.surface,
       child: Column(
         children: [
-          Container(
-            height: 38,
-            padding: const EdgeInsetsDirectional.only(start: 14, end: 8),
-            decoration: BoxDecoration(
+          SizedBox(
+            height: 39,
+            child: Material(
               color: scheme.surfaceContainerLowest,
-              border: Border(
-                bottom: BorderSide(color: scheme.outlineVariant),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: openChapters.length,
+                separatorBuilder: (_, __) => VerticalDivider(
+                  width: 1,
+                  color: scheme.outlineVariant,
+                ),
+                itemBuilder: (context, index) {
+                  final chapter = openChapters[index];
+                  final selected = chapter.id == activeChapterId;
+                  return InkWell(
+                    onTap: () => onSelectTab(chapter),
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 130, maxWidth: 220),
+                      padding: const EdgeInsetsDirectional.only(start: 12),
+                      decoration: BoxDecoration(
+                        color: selected ? scheme.surface : Colors.transparent,
+                        border: selected
+                            ? Border(
+                                top: BorderSide(color: scheme.primary, width: 2),
+                              )
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: 15,
+                            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 7),
+                          Flexible(
+                            child: Text(
+                              chapter.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    fontWeight: selected ? FontWeight.w600 : null,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            tooltip: Translations.of(context).app.actions.close,
+                            onPressed: openChapters.length <= 1
+                                ? null
+                                : () => onCloseTab(chapter),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 30,
+                              height: 30,
+                            ),
+                            icon: const Icon(Icons.close_rounded, size: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.description_outlined,
-                  size: 16,
-                  color: scheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                ),
-                if (onClosePreview != null)
-                  IconButton(
-                    tooltip: Translations.of(context).editor.workspace.modes.preview,
-                    onPressed: onClosePreview,
-                    icon: const Icon(Icons.vertical_split_outlined, size: 17),
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
           ),
+          Divider(height: 1, color: scheme.outlineVariant),
           Expanded(child: child),
         ],
       ),
@@ -1147,8 +1268,8 @@ final class _StatusBar extends StatelessWidget {
               Text(
                 '$templateName v$templateVersion',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+                      color: scheme.onSurfaceVariant,
+                    ),
               ),
               const Spacer(),
               _SaveStatusView(status: saveStatus, path: path),
@@ -1191,8 +1312,8 @@ final class _MarkdownEditor extends StatelessWidget {
                     chapterTitle == null
                         ? tr.editor.workspace.markdown.title
                         : tr.editor.workspace.markdown.chapterTitle(
-                      title: chapterTitle!,
-                    ),
+                            title: chapterTitle!,
+                          ),
                     style: Theme.of(context).textTheme.titleMedium,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1316,10 +1437,10 @@ final class _BookSidebar extends StatelessWidget {
                     child: Text(
                       tr.editor.sidebar.title.toUpperCase(),
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        letterSpacing: 0.7,
-                        fontWeight: FontWeight.w700,
-                      ),
+                            color: scheme.onSurfaceVariant,
+                            letterSpacing: 0.7,
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                   ),
                   IconButton(
@@ -1361,10 +1482,10 @@ final class _BookSidebar extends StatelessWidget {
                     child: Text(
                       tr.editor.chapterManager.title.toUpperCase(),
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        letterSpacing: 0.7,
-                        fontWeight: FontWeight.w700,
-                      ),
+                            color: scheme.onSurfaceVariant,
+                            letterSpacing: 0.7,
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                   ),
                   IconButton(
@@ -1419,8 +1540,8 @@ final class _BookSidebar extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: selected ? FontWeight.w600 : null,
-                        ),
+                              fontWeight: selected ? FontWeight.w600 : null,
+                            ),
                       ),
                       onTap: () => onSelectChapter(chapter),
                       trailing: PopupMenuButton<String>(
@@ -1503,10 +1624,10 @@ final class _SidebarAction extends StatelessWidget {
         subtitle: subtitle == null
             ? null
             : Text(
-          subtitle!,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
         onTap: onTap,
       ),
     );
@@ -1607,7 +1728,7 @@ final class _LargeChapterPreviewPaused extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   '${tr.editor.previewPanel.largeChapter.characters(count: characters)}. '
-                      '${tr.editor.previewPanel.largeChapter.description}',
+                  '${tr.editor.previewPanel.largeChapter.description}',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -1652,11 +1773,18 @@ final class _SaveStatusView extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+                  color: scheme.onSurfaceVariant,
+                ),
           ),
         ],
       ),
     );
+  }
+}
+
+extension _FirstOrNullExtension<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }
