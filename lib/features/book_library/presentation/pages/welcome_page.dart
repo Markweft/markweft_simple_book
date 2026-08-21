@@ -362,6 +362,8 @@ final class _ActionCard extends StatelessWidget {
     required this.onTap,
   });
 
+  static const double _height = 132;
+
   final double width;
   final IconData icon;
   final String title;
@@ -374,6 +376,7 @@ final class _ActionCard extends StatelessWidget {
 
     return SizedBox(
       width: width,
+      height: _height,
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -390,12 +393,20 @@ final class _ActionCard extends StatelessWidget {
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 4),
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 5),
                       Text(
                         subtitle,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -403,6 +414,7 @@ final class _ActionCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 const Icon(Icons.arrow_forward_rounded, size: 18),
               ],
             ),
@@ -539,9 +551,16 @@ final class _RecentBookTile extends StatelessWidget {
               ),
             )
           else
-            Text(
-              tr.welcome.recent.unknownVersion,
-              style: Theme.of(context).textTheme.labelSmall,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                tr.welcome.recent.unknownVersion,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
             ),
         ],
       ),

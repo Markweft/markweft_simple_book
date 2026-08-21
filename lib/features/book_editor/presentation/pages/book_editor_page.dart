@@ -44,7 +44,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   static const int _livePreviewCharacterLimit = 350000;
   static const BookExportService _exportService = BookExportService();
   static const BookCompilationService _compilationService =
-      BookCompilationService();
+  BookCompilationService();
   static const BookHistoryService _historyService = BookHistoryService();
 
   late final TextEditingController _controller;
@@ -146,14 +146,14 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     _saveDebounce?.cancel();
     _saveDebounce = Timer(
       const Duration(milliseconds: 500),
-      () => unawaited(_queueSave(value)),
+          () => unawaited(_queueSave(value)),
     );
 
     _previewDebounce?.cancel();
     if (!_largeChapterPreviewPaused) {
       _previewDebounce = Timer(
         const Duration(milliseconds: 300),
-        () {
+            () {
           if (mounted) setState(() => _previewMarkdown = _draftMarkdown);
         },
       );
@@ -223,7 +223,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     _projectFlushDebounce?.cancel();
     _projectFlushDebounce = Timer(
       const Duration(seconds: 5),
-      () => unawaited(_flushProject()),
+          () => unawaited(_flushProject()),
     );
   }
 
@@ -438,41 +438,14 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   Future<String?> _askForChapterTitle({
     required String title,
     String? initialValue,
-  }) async {
-    final controller = TextEditingController(text: initialValue);
-    final tr = Translations.of(context);
-    final result = await showDialog<String>(
+  }) {
+    return showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: tr.dialogs.chapterTitle,
-          ),
-          onSubmitted: (value) {
-            final text = value.trim();
-            if (text.isNotEmpty) Navigator.of(context).pop(text);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(tr.app.actions.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) Navigator.of(context).pop(text);
-            },
-            child: Text(tr.app.actions.save),
-          ),
-        ],
+      builder: (_) => _ChapterTitleDialog(
+        title: title,
+        initialValue: initialValue,
       ),
     );
-    controller.dispose();
-    return result;
   }
 
   Future<void> _showBookSettings() async {
@@ -548,7 +521,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
     final extension = format == BookOutputFormat.pdf ? 'pdf' : 'epub';
     final location = await getSaveLocation(
       suggestedName:
-          '${path.basenameWithoutExtension(widget.project.file.path)}.$extension',
+      '${path.basenameWithoutExtension(widget.project.file.path)}.$extension',
       acceptedTypeGroups: <XTypeGroup>[
         XTypeGroup(label: extension.toUpperCase(), extensions: [extension]),
       ],
@@ -584,9 +557,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       final label = format == BookOutputFormat.pdf ? 'PDF' : 'EPUB';
       _showMessage(
         Translations.of(context).editor.export.success(
-              format: label,
-              path: location.path,
-            ),
+          format: label,
+          path: location.path,
+        ),
       );
     } on Object catch (error) {
       if (!mounted) return;
@@ -638,7 +611,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
     final activeIndex = _chapters.indexWhere(
-      (chapter) => chapter.id == _activeChapter?.id,
+          (chapter) => chapter.id == _activeChapter?.id,
     );
 
     return Scaffold(
@@ -654,7 +627,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             Text(widget.project.title),
             Text(
               '${_activeChapter?.title ?? tr.editor.chapterManager.loading} · '
-              '${_template.metadata.name} v${_template.metadata.version}',
+                  '${_template.metadata.name} v${_template.metadata.version}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
@@ -715,9 +688,9 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             onSelected: (format) => unawaited(_exportBook(format)),
             icon: _exportInProgress
                 ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
                 : const Icon(Icons.ios_share_outlined),
             itemBuilder: (context) => [
               if (_template.metadata.supportsPdf)
@@ -769,84 +742,84 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             child: _saveStatus == SaveStatus.loading
                 ? const Center(child: CircularProgressIndicator())
                 : LayoutBuilder(
-                    builder: (context, constraints) {
-                      final sidebar = _BookSidebar(
-                        chapters: _chapters,
-                        activeChapterId: _activeChapter?.id,
-                        depthOf: _depthOf,
-                        onOpenAppSettings: widget.onOpenAppSettings,
-                        onOpenSettings: _showBookSettings,
-                        onOpenHistory: _openHistory,
-                        onAddChapter: () => _addChapter(),
-                        onAddChild: (chapter) => _addChapter(parentId: chapter.id),
-                        onSelectChapter: _selectChapter,
-                        onRenameChapter: _renameChapter,
-                        onDeleteChapter: _deleteChapter,
-                        onMoveChapterUp: (chapter) => _moveChapter(chapter, -1),
-                        onMoveChapterDown: (chapter) => _moveChapter(chapter, 1),
-                        onReorder: _reorderChapters,
-                      );
-                      final editor = _MarkdownEditor(
-                        controller: _controller,
-                        chapterTitle: _activeChapter?.title,
-                        actions: _template.metadata.toolbarActions,
-                        onChanged: _onMarkdownChanged,
-                      );
-                      final preview = _largeChapterPreviewPaused
-                          ? _LargeChapterPreviewPaused(
-                              characters: _draftMarkdown.length,
-                              onRefresh: () {
-                                setState(() {
-                                  _previewMarkdown = _draftMarkdown;
-                                  _largeChapterPreviewPaused = false;
-                                });
-                              },
-                            )
-                          : BookPreviewPanel(
-                              project: widget.project,
-                              projectRepository: widget.projectRepository,
-                              template: _template,
-                              settings: _bookSettings,
-                              chapterMarkdown: _previewMarkdown,
-                              chapterTitle: _activeChapter?.title,
-                              onBeforeFullBookPreview: () =>
-                                  _saveNow(flushProject: false),
-                            );
+              builder: (context, constraints) {
+                final sidebar = _BookSidebar(
+                  chapters: _chapters,
+                  activeChapterId: _activeChapter?.id,
+                  depthOf: _depthOf,
+                  onOpenAppSettings: widget.onOpenAppSettings,
+                  onOpenSettings: _showBookSettings,
+                  onOpenHistory: _openHistory,
+                  onAddChapter: () => _addChapter(),
+                  onAddChild: (chapter) => _addChapter(parentId: chapter.id),
+                  onSelectChapter: _selectChapter,
+                  onRenameChapter: _renameChapter,
+                  onDeleteChapter: _deleteChapter,
+                  onMoveChapterUp: (chapter) => _moveChapter(chapter, -1),
+                  onMoveChapterDown: (chapter) => _moveChapter(chapter, 1),
+                  onReorder: _reorderChapters,
+                );
+                final editor = _MarkdownEditor(
+                  controller: _controller,
+                  chapterTitle: _activeChapter?.title,
+                  actions: _template.metadata.toolbarActions,
+                  onChanged: _onMarkdownChanged,
+                );
+                final preview = _largeChapterPreviewPaused
+                    ? _LargeChapterPreviewPaused(
+                  characters: _draftMarkdown.length,
+                  onRefresh: () {
+                    setState(() {
+                      _previewMarkdown = _draftMarkdown;
+                      _largeChapterPreviewPaused = false;
+                    });
+                  },
+                )
+                    : BookPreviewPanel(
+                  project: widget.project,
+                  projectRepository: widget.projectRepository,
+                  template: _template,
+                  settings: _bookSettings,
+                  chapterMarkdown: _previewMarkdown,
+                  chapterTitle: _activeChapter?.title,
+                  onBeforeFullBookPreview: () =>
+                      _saveNow(flushProject: false),
+                );
 
-                      if (_workspaceMode == BookWorkspaceMode.preview) {
-                        return constraints.maxWidth >= 980
-                            ? Row(
-                                children: [
-                                  SizedBox(width: 292, child: sidebar),
-                                  const VerticalDivider(width: 1),
-                                  Expanded(child: preview),
-                                ],
-                              )
-                            : preview;
-                      }
-                      if (constraints.maxWidth >= 1180) {
-                        return Row(
-                          children: [
-                            SizedBox(width: 292, child: sidebar),
-                            const VerticalDivider(width: 1),
-                            Expanded(child: editor),
-                            const VerticalDivider(width: 1),
-                            Expanded(child: preview),
-                          ],
-                        );
-                      }
-                      if (constraints.maxWidth >= 900) {
-                        return Row(
-                          children: [
-                            Expanded(child: editor),
-                            const VerticalDivider(width: 1),
-                            Expanded(child: preview),
-                          ],
-                        );
-                      }
-                      return editor;
-                    },
-                  ),
+                if (_workspaceMode == BookWorkspaceMode.preview) {
+                  return constraints.maxWidth >= 980
+                      ? Row(
+                    children: [
+                      SizedBox(width: 292, child: sidebar),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: preview),
+                    ],
+                  )
+                      : preview;
+                }
+                if (constraints.maxWidth >= 1180) {
+                  return Row(
+                    children: [
+                      SizedBox(width: 292, child: sidebar),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: editor),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: preview),
+                    ],
+                  );
+                }
+                if (constraints.maxWidth >= 900) {
+                  return Row(
+                    children: [
+                      Expanded(child: editor),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: preview),
+                    ],
+                  );
+                }
+                return editor;
+              },
+            ),
           ),
         ],
       ),
@@ -884,8 +857,8 @@ final class _MarkdownEditor extends StatelessWidget {
                     chapterTitle == null
                         ? tr.editor.workspace.markdown.title
                         : tr.editor.workspace.markdown.chapterTitle(
-                            title: chapterTitle!,
-                          ),
+                      title: chapterTitle!,
+                    ),
                     style: Theme.of(context).textTheme.titleLarge,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -965,7 +938,7 @@ final class _BookSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
-    return ColoredBox(
+    return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1099,6 +1072,68 @@ final class _BookSidebar extends StatelessWidget {
   }
 }
 
+final class _ChapterTitleDialog extends StatefulWidget {
+  const _ChapterTitleDialog({
+    required this.title,
+    this.initialValue,
+  });
+
+  final String title;
+  final String? initialValue;
+
+  @override
+  State<_ChapterTitleDialog> createState() => _ChapterTitleDialogState();
+}
+
+final class _ChapterTitleDialogState extends State<_ChapterTitleDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isNotEmpty) {
+      Navigator.of(context).pop(text);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          labelText: tr.dialogs.chapterTitle.fieldLabel,
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr.app.actions.cancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(tr.app.actions.save),
+        ),
+      ],
+    );
+  }
+}
+
 final class _LargeChapterPreviewPaused extends StatelessWidget {
   const _LargeChapterPreviewPaused({
     required this.characters,
@@ -1131,7 +1166,7 @@ final class _LargeChapterPreviewPaused extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   '${tr.editor.previewPanel.largeChapter.characters(count: characters)}. '
-                  '${tr.editor.previewPanel.largeChapter.description}',
+                      '${tr.editor.previewPanel.largeChapter.description}',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),

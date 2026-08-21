@@ -39,7 +39,7 @@
     "version": "MDW v{version}",
     "current": "Current",
     "upgrade": "Upgrade to v{version}",
-    "unknownVersion": "Version unavailable"
+    "unknownVersion": "Detect version on open"
   },
   "conversion": {
     "dialog": {

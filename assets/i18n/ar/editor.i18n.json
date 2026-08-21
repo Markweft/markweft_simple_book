@@ -51,6 +51,7 @@
       "chapter": "الفصل",
       "fullBook": "الكتاب كاملاً"
     },
+    "openCurrentChapter": "فتح الفصل الحالي: {title}",
     "refreshFullBook": "تحديث معاينة الكتاب كاملاً",
     "loadFullBookFailed": "تعذر تحميل معاينة الكتاب كاملاً.",
     "epubReflowable": "EPUB · معاينة مرنة",

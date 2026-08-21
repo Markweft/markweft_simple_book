@@ -39,7 +39,7 @@
     "version": "MDW v{version}",
     "current": "الحالي",
     "upgrade": "ترقية إلى v{version}",
-    "unknownVersion": "الإصدار غير متاح"
+    "unknownVersion": "سيتم اكتشاف الإصدار عند الفتح"
   },
   "conversion": {
     "dialog": {

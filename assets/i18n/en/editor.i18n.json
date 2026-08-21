@@ -51,6 +51,7 @@
       "chapter": "Chapter",
       "fullBook": "Full book"
     },
+    "openCurrentChapter": "Open current: {title}",
     "refreshFullBook": "Refresh full-book preview",
     "loadFullBookFailed": "Unable to load full-book preview.",
     "epubReflowable": "EPUB · reflowable preview",

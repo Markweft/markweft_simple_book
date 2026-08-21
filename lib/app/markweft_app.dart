@@ -34,7 +34,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   final BookProjectRepository _projectRepository = MdwBookProjectRepository();
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
   final MacosSecurityScopedBookmarkService _bookmarkService =
-  const MacosSecurityScopedBookmarkService();
+      const MacosSecurityScopedBookmarkService();
   final MdwVersionConverter _versionConverter = const MdwVersionConverter();
   final AppSettingsStore _appSettingsStore = const AppSettingsStore();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
@@ -95,7 +95,12 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     final versions = <String, int?>{};
 
     for (final projectPath in recentProjects) {
-      versions[projectPath] = await _inspectRecentVersion(projectPath);
+      var version = await _recentProjectsStore.versionFor(projectPath);
+      version ??= await _inspectRecentVersion(projectPath);
+      versions[projectPath] = version;
+      if (version != null) {
+        await _recentProjectsStore.cacheVersion(projectPath, version);
+      }
     }
 
     if (!mounted) return;
@@ -108,7 +113,16 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   Future<int?> _inspectRecentVersion(String projectPath) async {
     try {
       if (!Platform.isMacOS) {
-        return _versionConverter.inspectVersion(projectPath);
+        return await _versionConverter.inspectVersion(projectPath);
+      }
+
+      // Try direct access first. This works while macOS still grants access in
+      // the current session and lets us backfill version metadata for legacy
+      // recent entries.
+      try {
+        return await _versionConverter.inspectVersion(projectPath);
+      } on Object {
+        // Fall through to the persistent security-scoped bookmark.
       }
 
       final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
@@ -131,7 +145,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     );
     if (title == null) return;
     await _runProjectAction(
-          () => _projectRepository.createProject(title: title),
+      () => _projectRepository.createProject(title: title),
     );
   }
 
@@ -142,7 +156,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     );
     if (title == null) return;
     await _runProjectAction(
-          () => _projectRepository.importMarkdown(title: title),
+      () => _projectRepository.importMarkdown(title: title),
     );
   }
 
@@ -292,7 +306,11 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       } on Object {
         // Conversion succeeded; bookmark can be refreshed on the next manual open.
       }
-      await _recentProjectsStore.add(result.outputPath, bookmark: bookmark);
+      await _recentProjectsStore.add(
+        result.outputPath,
+        bookmark: bookmark,
+        version: result.targetVersion,
+      );
       await _loadRecentProjects();
 
       if (!mounted) return;
@@ -306,7 +324,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
       if (choice.openAfter) {
         await _runProjectAction(
-              () => _projectRepository.openProject(result!.outputPath),
+          () => _projectRepository.openProject(result!.outputPath),
         );
       }
     } on Object catch (error) {
@@ -333,8 +351,9 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       _errorMessage = null;
     });
 
+    int version;
     try {
-      final version = await _versionConverter.inspectVersion(selected.path);
+      version = await _versionConverter.inspectVersion(selected.path);
       if (!mounted) return;
 
       if (version != MdwVersionConverter.currentVersion) {
@@ -356,12 +375,14 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
     if (mounted) setState(() => _isBusy = false);
     await _runProjectAction(
-          () => _projectRepository.openProject(selected.path),
+      () => _projectRepository.openProject(selected.path),
+      knownVersion: version,
     );
   }
 
   Future<void> _openRecentProject(String projectPath) async {
-    final version = _recentProjectVersions[projectPath];
+    final version = _recentProjectVersions[projectPath] ??
+        await _recentProjectsStore.versionFor(projectPath);
     if (version != null && version != MdwVersionConverter.currentVersion) {
       await _convertBookVersion(
         sourcePath: projectPath,
@@ -381,7 +402,9 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
         _activeSecurityScopedPath = resolvedPath;
         await _runProjectAction(
-              () => _projectRepository.openProject(resolvedPath),
+          () => _projectRepository.openProject(resolvedPath),
+          knownVersion: version,
+          recentPath: projectPath,
         );
         return;
       } on Object catch (error) {
@@ -393,12 +416,17 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       }
     }
 
-    await _runProjectAction(() => _projectRepository.openProject(projectPath));
+    await _runProjectAction(
+      () => _projectRepository.openProject(projectPath),
+      knownVersion: version,
+    );
   }
 
   Future<void> _runProjectAction(
-      Future<MarkweftProject?> Function() action,
-      ) async {
+    Future<MarkweftProject?> Function() action, {
+    int? knownVersion,
+    String? recentPath,
+  }) async {
     setState(() {
       _isBusy = true;
       _errorMessage = null;
@@ -415,15 +443,22 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         // The project is already open. Bookmark failure only affects relaunch.
       }
 
+      final version = knownVersion ?? MdwVersionConverter.currentVersion;
+      final storedPath = recentPath ?? project.file.path;
       final recentProjects = await _recentProjectsStore.add(
-        project.file.path,
+        storedPath,
         bookmark: bookmark,
+        version: version,
       );
       if (!mounted) return;
 
       setState(() {
         _activeProject = project;
         _recentProjects = recentProjects;
+        _recentProjectVersions = <String, int?>{
+          ..._recentProjectVersions,
+          storedPath: version,
+        };
       });
     } on Object catch (error) {
       if (!mounted) return;
@@ -495,31 +530,31 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       supportedLocales: AppLocaleUtils.supportedLocales,
       home: _activeProject == null
           ? WelcomePage(
-        isBusy: _isBusy,
-        errorMessage: _errorMessage,
-        recentProjects: _recentProjects,
-        recentProjectVersions: _recentProjectVersions,
-        currentMdwVersion: MdwVersionConverter.currentVersion,
-        showRecentBookPaths: _appSettings.showRecentBookPaths,
-        onOpenAppSettings: _openAppSettings,
-        onCreateBook: _createProject,
-        onOpenBook: _pickProject,
-        onImportMarkdown: _importMarkdown,
-        onConvertBookVersion: () => _convertBookVersion(),
-        onConvertRecent: (projectPath) => _convertBookVersion(
-          sourcePath: projectPath,
-          targetVersion: MdwVersionConverter.currentVersion,
-        ),
-        onOpenRecent: _openRecentProject,
-        onRemoveRecent: _removeRecentProject,
-      )
+              isBusy: _isBusy,
+              errorMessage: _errorMessage,
+              recentProjects: _recentProjects,
+              recentProjectVersions: _recentProjectVersions,
+              currentMdwVersion: MdwVersionConverter.currentVersion,
+              showRecentBookPaths: _appSettings.showRecentBookPaths,
+              onOpenAppSettings: _openAppSettings,
+              onCreateBook: _createProject,
+              onOpenBook: _pickProject,
+              onImportMarkdown: _importMarkdown,
+              onConvertBookVersion: () => _convertBookVersion(),
+              onConvertRecent: (projectPath) => _convertBookVersion(
+                sourcePath: projectPath,
+                targetVersion: MdwVersionConverter.currentVersion,
+              ),
+              onOpenRecent: _openRecentProject,
+              onRemoveRecent: _removeRecentProject,
+            )
           : BookEditorPage(
-        key: ValueKey(_activeProject!.file.path),
-        project: _activeProject!,
-        projectRepository: _projectRepository,
-        onOpenAppSettings: _openAppSettings,
-        onClose: _closeProject,
-      ),
+              key: ValueKey(_activeProject!.file.path),
+              project: _activeProject!,
+              projectRepository: _projectRepository,
+              onOpenAppSettings: _openAppSettings,
+              onClose: _closeProject,
+            ),
     );
   }
 }
