@@ -313,6 +313,13 @@ final class _QuickActions extends StatelessWidget {
         const gap = 12.0;
         final width =
             (constraints.maxWidth - (columns - 1) * gap) / columns;
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final baseHeight = switch (columns) {
+          4 => 156.0,
+          2 => 142.0,
+          _ => 124.0,
+        };
+        final cardHeight = baseHeight * textScale.clamp(1.0, 1.3);
 
         return Wrap(
           spacing: gap,
@@ -320,6 +327,7 @@ final class _QuickActions extends StatelessWidget {
           children: [
             _ActionCard(
               width: width,
+              height: cardHeight,
               icon: Icons.add_rounded,
               title: tr.welcome.quickActions.create.title,
               subtitle: tr.welcome.quickActions.create.description,
@@ -327,6 +335,7 @@ final class _QuickActions extends StatelessWidget {
             ),
             _ActionCard(
               width: width,
+              height: cardHeight,
               icon: Icons.folder_open_rounded,
               title: tr.welcome.quickActions.open.title,
               subtitle: tr.welcome.quickActions.open.description,
@@ -334,6 +343,7 @@ final class _QuickActions extends StatelessWidget {
             ),
             _ActionCard(
               width: width,
+              height: cardHeight,
               icon: Icons.upload_file_rounded,
               title: tr.welcome.quickActions.importMarkdown.title,
               subtitle: tr.welcome.quickActions.importMarkdown.description,
@@ -341,6 +351,7 @@ final class _QuickActions extends StatelessWidget {
             ),
             _ActionCard(
               width: width,
+              height: cardHeight,
               icon: Icons.swap_horiz_rounded,
               title: tr.welcome.quickActions.convertVersion.title,
               subtitle: tr.welcome.quickActions.convertVersion.description,
@@ -356,15 +367,15 @@ final class _QuickActions extends StatelessWidget {
 final class _ActionCard extends StatelessWidget {
   const _ActionCard({
     required this.width,
+    required this.height,
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
-  static const double _height = 132;
-
   final double width;
+  final double height;
   final IconData icon;
   final String title;
   final String subtitle;
@@ -376,7 +387,7 @@ final class _ActionCard extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      height: _height,
+      height: height,
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -398,14 +409,14 @@ final class _ActionCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 5),
                       Text(
                         subtitle,
-                        maxLines: 3,
+                        maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
