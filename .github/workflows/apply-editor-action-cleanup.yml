@@ -1,4 +1,5 @@
 name: Apply editor action cleanup
+# Trigger the one-time editor cleanup after the workflow exists on the branch.
 
 on:
   push:
