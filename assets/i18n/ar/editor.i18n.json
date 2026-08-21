@@ -2,6 +2,7 @@
   "workspace": {
     "modes": {
       "edit": "تحرير",
+      "canvas": "لوحة الصفحات",
       "preview": "معاينة"
     },
     "markdown": {
@@ -9,7 +10,18 @@
       "chapterTitle": "Markdown · {title}",
       "chapterOnlyLoaded": "يتم تحميل هذا الفصل فقط داخل المحرر.",
       "writeHint": "اكتب هذا الفصل بصيغة Markdown..."
-    }
+    },
+    "canvasTitle": "لوحة الصفحات المرئية",
+    "canvasPage": "الصفحة {current} من {total}",
+    "canvasPages": "الصفحات",
+    "canvasPagePrevious": "الصفحة السابقة",
+    "canvasPageNext": "الصفحة التالية",
+    "canvasZoomIn": "تكبير",
+    "canvasZoomOut": "تصغير",
+    "canvasResetZoom": "إعادة الضبط إلى 100%",
+    "canvasFitWidth": "ملاءمة العرض",
+    "canvasFitPage": "ملاءمة الصفحة",
+    "canvasEmpty": "لا توجد صفحات للعرض"
   },
   "sidebar": {
     "title": "الكتاب",
