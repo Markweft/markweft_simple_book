@@ -1,0 +1,140 @@
+name: Apply MDW atomic save fix
+
+on:
+  push:
+    branches:
+      - feature/book-settings-chapters
+    paths:
+      - .github/workflows/apply-mdw-atomic-save-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/book-settings-chapters
+          fetch-depth: 0
+
+      - name: Patch repository and version inspection
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          repo = Path('lib/features/book_library/data/repositories/mdw_book_project_repository.dart')
+          text = repo.read_text()
+
+          import_marker = "import 'package:markweft_simple_book/features/book_library/data/services/mdw_version_converter.dart';\n"
+          atomic_import = "import 'package:markweft_simple_book/features/book_library/data/services/mdw_atomic_file_service.dart';\n"
+          if atomic_import not in text:
+              text = text.replace(import_marker, atomic_import + import_marker, 1)
+
+          class_marker = 'final class MdwBookProjectRepository implements BookProjectRepository {\n'
+          field = '  static const MdwAtomicFileService _atomicFileService = MdwAtomicFileService();\n\n'
+          if field not in text:
+              text = text.replace(class_marker, class_marker + field, 1)
+
+          old_open = '''  Future<MarkweftProject> openProject(String projectPath) async {
+    final projectFile = File(projectPath);
+    if (!await projectFile.exists()) {
+      throw FileSystemException('Project file does not exist.', projectPath);
+    }
+'''
+          new_open = '''  Future<MarkweftProject> openProject(String projectPath) async {
+    final projectFile = await _atomicFileService.recoverIfNeeded(File(projectPath));
+    if (!await projectFile.exists()) {
+      throw FileSystemException('Project file does not exist.', projectPath);
+    }
+'''
+          if old_open not in text:
+              raise SystemExit('openProject marker not found')
+          text = text.replace(old_open, new_open, 1)
+
+          old_save = '''  Future<void> saveProject(MarkweftProject project) async {
+    final archive = Archive();
+    await _appendDirectoryToArchive(
+      archive: archive,
+      directory: project.workspace,
+      rootPath: project.workspace.path,
+    );
+
+    final encoded = ZipEncoder().encode(archive);
+    await project.file.writeAsBytes(encoded, flush: true);
+  }
+'''
+          new_save = '''  Future<void> saveProject(MarkweftProject project) async {
+    final archive = Archive();
+    await _appendDirectoryToArchive(
+      archive: archive,
+      directory: project.workspace,
+      rootPath: project.workspace.path,
+    );
+
+    final encoded = ZipEncoder().encode(archive);
+    await _atomicFileService.write(project.file, encoded);
+  }
+'''
+          if old_save not in text:
+              raise SystemExit('saveProject marker not found')
+          text = text.replace(old_save, new_save, 1)
+          repo.write_text(text)
+
+          converter = Path('lib/features/book_library/data/services/mdw_version_converter.dart')
+          text = converter.read_text()
+
+          import_marker = "import 'package:file_selector/file_selector.dart';\n"
+          atomic_import = "import 'package:markweft_simple_book/features/book_library/data/services/mdw_atomic_file_service.dart';\n"
+          if atomic_import not in text:
+              text = text.replace(import_marker, import_marker + atomic_import, 1)
+
+          class_marker = 'final class MdwVersionConverter {\n  const MdwVersionConverter();\n\n'
+          field = '  static const MdwAtomicFileService _atomicFileService = MdwAtomicFileService();\n\n'
+          if field not in text:
+              text = text.replace(class_marker, class_marker + field, 1)
+
+          old_inspect = '''  Future<int> inspectVersion(String projectPath) async {
+    final workspace = await _createWorkspace();
+    try {
+      await _extract(File(projectPath), workspace);
+      return _readVersion(workspace);
+    } finally {
+'''
+          new_inspect = '''  Future<int> inspectVersion(String projectPath) async {
+    final workspace = await _createWorkspace();
+    try {
+      final projectFile = await _atomicFileService.recoverIfNeeded(File(projectPath));
+      await _extract(projectFile, workspace);
+      return _readVersion(workspace);
+    } finally {
+'''
+          if old_inspect not in text:
+              raise SystemExit('inspectVersion marker not found')
+          text = text.replace(old_inspect, new_inspect, 1)
+
+          old_source = '''    final sourceFile = File(sourcePath);
+    final workspace = await _createWorkspace();
+'''
+          new_source = '''    final sourceFile = await _atomicFileService.recoverIfNeeded(File(sourcePath));
+    final workspace = await _createWorkspace();
+'''
+          if old_source not in text:
+              raise SystemExit('convert source marker not found')
+          text = text.replace(old_source, new_source, 1)
+          converter.write_text(text)
+          PY
+
+      - name: Format
+        run: dart format lib/features/book_library/data/repositories/mdw_book_project_repository.dart lib/features/book_library/data/services/mdw_version_converter.dart lib/features/book_library/data/services/mdw_atomic_file_service.dart
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/features/book_library/data/repositories/mdw_book_project_repository.dart \
+                  lib/features/book_library/data/services/mdw_version_converter.dart \
+                  lib/features/book_library/data/services/mdw_atomic_file_service.dart
+          git commit -m "Fix MDW corruption on abrupt app exit" || exit 0
+          git push origin HEAD:feature/book-settings-chapters
