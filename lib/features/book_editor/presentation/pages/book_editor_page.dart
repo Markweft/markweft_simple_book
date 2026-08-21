@@ -64,6 +64,8 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   bool _exportInProgress = false;
   bool _settingsInProgress = false;
   bool _largeChapterPreviewPaused = false;
+  bool _sidebarVisible = true;
+  bool _previewVisible = true;
   Completer<void>? _saveCompleter;
   SaveStatus _saveStatus = SaveStatus.loading;
 
@@ -610,61 +612,113 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
     final activeIndex = _chapters.indexWhere(
           (chapter) => chapter.id == _activeChapter?.id,
     );
 
     return Scaffold(
+      backgroundColor: scheme.surface,
       appBar: AppBar(
+        toolbarHeight: 52,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: scheme.surfaceContainerLow,
         leading: IconButton(
           tooltip: tr.editor.sidebar.close,
           onPressed: _saveStatus == SaveStatus.loading ? null : _closeBook,
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        titleSpacing: 4,
+        title: Row(
           children: [
-            Text(widget.project.title),
-            Text(
-              '${_activeChapter?.title ?? tr.editor.chapterManager.loading} · '
-                  '${_template.metadata.name} v${_template.metadata.version}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.auto_stories_rounded,
+                size: 17,
+                color: scheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.project.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    '${_activeChapter?.title ?? tr.editor.chapterManager.loading} · '
+                        '${_template.metadata.name} v${_template.metadata.version}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          if (activeIndex >= 0)
-            Center(
-              child: Text(
-                tr.editor.chapterManager.index(
-                  current: activeIndex + 1,
-                  total: _chapters.length,
-                ),
-              ),
+          IconButton(
+            tooltip: tr.editor.sidebar.title,
+            isSelected: _sidebarVisible,
+            onPressed: () => setState(() => _sidebarVisible = !_sidebarVisible),
+            icon: const Icon(Icons.view_sidebar_outlined),
+            selectedIcon: const Icon(Icons.view_sidebar_rounded),
+          ),
+          if (_workspaceMode == BookWorkspaceMode.edit)
+            IconButton(
+              tooltip: tr.editor.workspace.modes.preview,
+              isSelected: _previewVisible,
+              onPressed: () => setState(() => _previewVisible = !_previewVisible),
+              icon: const Icon(Icons.preview_outlined),
+              selectedIcon: const Icon(Icons.preview_rounded),
             ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 4),
           SegmentedButton<BookWorkspaceMode>(
             showSelectedIcon: false,
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
             segments: [
               ButtonSegment(
                 value: BookWorkspaceMode.edit,
-                icon: const Icon(Icons.edit_outlined),
+                icon: const Icon(Icons.edit_outlined, size: 17),
                 label: Text(tr.editor.workspace.modes.edit),
               ),
               ButtonSegment(
                 value: BookWorkspaceMode.preview,
-                icon: const Icon(Icons.visibility_outlined),
+                icon: const Icon(Icons.visibility_outlined, size: 17),
                 label: Text(tr.editor.workspace.modes.preview),
               ),
             ],
             selected: {_workspaceMode},
             onSelectionChanged: (selection) {
-              setState(() => _workspaceMode = selection.first);
+              setState(() {
+                _workspaceMode = selection.first;
+                if (_workspaceMode == BookWorkspaceMode.preview) {
+                  _previewVisible = true;
+                }
+              });
             },
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           IconButton(
             tooltip: tr.editor.sidebar.history.title,
             onPressed: _saveStatus == SaveStatus.loading ? null : _openHistory,
@@ -688,7 +742,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             onSelected: (format) => unawaited(_exportBook(format)),
             icon: _exportInProgress
                 ? const SizedBox.square(
-              dimension: 20,
+              dimension: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
                 : const Icon(Icons.ios_share_outlined),
@@ -716,13 +770,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
             onPressed: _saveStatus == SaveStatus.loading ? null : _saveNow,
             icon: const Icon(Icons.save_outlined),
           ),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 16),
-            child: _SaveStatusView(
-              status: _saveStatus,
-              path: widget.project.file.path,
-            ),
-          ),
+          const SizedBox(width: 6),
         ],
       ),
       body: Column(
@@ -747,6 +795,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                   chapters: _chapters,
                   activeChapterId: _activeChapter?.id,
                   depthOf: _depthOf,
+                  onClose: () => setState(() => _sidebarVisible = false),
                   onOpenAppSettings: widget.onOpenAppSettings,
                   onOpenSettings: _showBookSettings,
                   onOpenHistory: _openHistory,
@@ -759,13 +808,19 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                   onMoveChapterDown: (chapter) => _moveChapter(chapter, 1),
                   onReorder: _reorderChapters,
                 );
-                final editor = _MarkdownEditor(
-                  controller: _controller,
-                  chapterTitle: _activeChapter?.title,
-                  actions: _template.metadata.toolbarActions,
-                  onChanged: _onMarkdownChanged,
+                final editor = _EditorSurface(
+                  title: _activeChapter?.title ?? tr.editor.workspace.markdown.title,
+                  onClosePreview: _previewVisible
+                      ? () => setState(() => _previewVisible = false)
+                      : null,
+                  child: _MarkdownEditor(
+                    controller: _controller,
+                    chapterTitle: _activeChapter?.title,
+                    actions: _template.metadata.toolbarActions,
+                    onChanged: _onMarkdownChanged,
+                  ),
                 );
-                final preview = _largeChapterPreviewPaused
+                final previewContent = _largeChapterPreviewPaused
                     ? _LargeChapterPreviewPaused(
                   characters: _draftMarkdown.length,
                   onRefresh: () {
@@ -785,43 +840,321 @@ final class _BookEditorPageState extends State<BookEditorPage> {
                   onBeforeFullBookPreview: () =>
                       _saveNow(flushProject: false),
                 );
+                final preview = _PreviewSurface(
+                  onClose: _workspaceMode == BookWorkspaceMode.edit
+                      ? () => setState(() => _previewVisible = false)
+                      : null,
+                  child: previewContent,
+                );
 
-                if (_workspaceMode == BookWorkspaceMode.preview) {
-                  return constraints.maxWidth >= 980
-                      ? Row(
-                    children: [
-                      SizedBox(width: 292, child: sidebar),
+                final showSidebar = _sidebarVisible && constraints.maxWidth >= 780;
+                final showPreview = _workspaceMode == BookWorkspaceMode.preview ||
+                    (_previewVisible && constraints.maxWidth >= 940);
+
+                return Row(
+                  children: [
+                    _ActivityRail(
+                      sidebarVisible: showSidebar,
+                      previewVisible: showPreview,
+                      onToggleSidebar: () =>
+                          setState(() => _sidebarVisible = !_sidebarVisible),
+                      onTogglePreview: () => setState(() {
+                        _previewVisible = !_previewVisible;
+                        if (_previewVisible &&
+                            _workspaceMode == BookWorkspaceMode.preview) {
+                          _workspaceMode = BookWorkspaceMode.edit;
+                        }
+                      }),
+                      onOpenHistory: _openHistory,
+                      onOpenSettings: _showBookSettings,
+                      onOpenAppSettings: widget.onOpenAppSettings,
+                    ),
+                    const VerticalDivider(width: 1),
+                    if (showSidebar) ...[
+                      SizedBox(width: 286, child: sidebar),
                       const VerticalDivider(width: 1),
-                      Expanded(child: preview),
                     ],
-                  )
-                      : preview;
-                }
-                if (constraints.maxWidth >= 1180) {
-                  return Row(
-                    children: [
-                      SizedBox(width: 292, child: sidebar),
-                      const VerticalDivider(width: 1),
+                    if (_workspaceMode == BookWorkspaceMode.preview)
+                      Expanded(child: preview)
+                    else ...[
                       Expanded(child: editor),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: preview),
+                      if (showPreview) ...[
+                        const VerticalDivider(width: 1),
+                        Expanded(child: preview),
+                      ],
                     ],
-                  );
-                }
-                if (constraints.maxWidth >= 900) {
-                  return Row(
-                    children: [
-                      Expanded(child: editor),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: preview),
-                    ],
-                  );
-                }
-                return editor;
+                  ],
+                );
               },
             ),
           ),
+          _StatusBar(
+            activeIndex: activeIndex,
+            chapterCount: _chapters.length,
+            templateName: _template.metadata.name,
+            templateVersion: _template.metadata.version,
+            saveStatus: _saveStatus,
+            path: widget.project.file.path,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+final class _ActivityRail extends StatelessWidget {
+  const _ActivityRail({
+    required this.sidebarVisible,
+    required this.previewVisible,
+    required this.onToggleSidebar,
+    required this.onTogglePreview,
+    required this.onOpenHistory,
+    required this.onOpenSettings,
+    required this.onOpenAppSettings,
+  });
+
+  final bool sidebarVisible;
+  final bool previewVisible;
+  final VoidCallback onToggleSidebar;
+  final VoidCallback onTogglePreview;
+  final VoidCallback onOpenHistory;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onOpenAppSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget button({
+      required IconData icon,
+      required String tooltip,
+      required VoidCallback onPressed,
+      bool selected = false,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: IconButton(
+          tooltip: tooltip,
+          isSelected: selected,
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            foregroundColor: selected ? scheme.primary : scheme.onSurfaceVariant,
+            backgroundColor:
+            selected ? scheme.primaryContainer.withValues(alpha: 0.55) : null,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          icon: Icon(icon, size: 21),
+        ),
+      );
+    }
+
+    return Material(
+      color: scheme.surfaceContainerLowest,
+      child: SizedBox(
+        width: 50,
+        child: Column(
+          children: [
+            const SizedBox(height: 6),
+            button(
+              icon: Icons.account_tree_outlined,
+              tooltip: tr.editor.sidebar.title,
+              onPressed: onToggleSidebar,
+              selected: sidebarVisible,
+            ),
+            button(
+              icon: Icons.preview_outlined,
+              tooltip: tr.editor.workspace.modes.preview,
+              onPressed: onTogglePreview,
+              selected: previewVisible,
+            ),
+            button(
+              icon: Icons.history_rounded,
+              tooltip: tr.editor.sidebar.history.title,
+              onPressed: onOpenHistory,
+            ),
+            button(
+              icon: Icons.tune_rounded,
+              tooltip: tr.editor.sidebar.settings.title,
+              onPressed: onOpenSettings,
+            ),
+            const Spacer(),
+            button(
+              icon: Icons.settings_outlined,
+              tooltip: tr.editor.sidebar.appSettings,
+              onPressed: onOpenAppSettings,
+            ),
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _EditorSurface extends StatelessWidget {
+  const _EditorSurface({
+    required this.title,
+    required this.child,
+    this.onClosePreview,
+  });
+
+  final String title;
+  final Widget child;
+  final VoidCallback? onClosePreview;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      child: Column(
+        children: [
+          Container(
+            height: 38,
+            padding: const EdgeInsetsDirectional.only(start: 14, end: 8),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLowest,
+              border: Border(
+                bottom: BorderSide(color: scheme.outlineVariant),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.description_outlined,
+                  size: 16,
+                  color: scheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+                if (onClosePreview != null)
+                  IconButton(
+                    tooltip: Translations.of(context).editor.workspace.modes.preview,
+                    onPressed: onClosePreview,
+                    icon: const Icon(Icons.vertical_split_outlined, size: 17),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+final class _PreviewSurface extends StatelessWidget {
+  const _PreviewSurface({required this.child, this.onClose});
+
+  final Widget child;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      child: Column(
+        children: [
+          Container(
+            height: 38,
+            padding: const EdgeInsetsDirectional.only(start: 14, end: 6),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLowest,
+              border: Border(
+                bottom: BorderSide(color: scheme.outlineVariant),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.preview_outlined, size: 16, color: scheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tr.editor.workspace.modes.preview,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+                if (onClose != null)
+                  IconButton(
+                    tooltip: tr.app.actions.close,
+                    onPressed: onClose,
+                    icon: const Icon(Icons.close_rounded, size: 17),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+final class _StatusBar extends StatelessWidget {
+  const _StatusBar({
+    required this.activeIndex,
+    required this.chapterCount,
+    required this.templateName,
+    required this.templateVersion,
+    required this.saveStatus,
+    required this.path,
+  });
+
+  final int activeIndex;
+  final int chapterCount;
+  final String templateName;
+  final String templateVersion;
+  final SaveStatus saveStatus;
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerLow,
+      child: SizedBox(
+        height: 28,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            children: [
+              Icon(Icons.auto_stories_outlined, size: 14, color: scheme.primary),
+              const SizedBox(width: 6),
+              if (activeIndex >= 0)
+                Text(
+                  tr.editor.chapterManager.index(
+                    current: activeIndex + 1,
+                    total: chapterCount,
+                  ),
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              const SizedBox(width: 14),
+              Text(
+                '$templateName v$templateVersion',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              _SaveStatusView(status: saveStatus, path: path),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -843,10 +1176,11 @@ final class _MarkdownEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
-    return ColoredBox(
-      color: Theme.of(context).colorScheme.surface,
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -859,21 +1193,33 @@ final class _MarkdownEditor extends StatelessWidget {
                         : tr.editor.workspace.markdown.chapterTitle(
                       title: chapterTitle!,
                     ),
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleMedium,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Tooltip(
                   message: tr.editor.workspace.markdown.chapterOnlyLoaded,
-                  child: const Icon(Icons.speed_outlined, size: 19),
+                  child: Icon(
+                    Icons.bolt_rounded,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            MarkdownCommandToolbar(
-              controller: controller,
-              actions: actions,
-              onChanged: onChanged,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: MarkdownCommandToolbar(
+                controller: controller,
+                actions: actions,
+                onChanged: onChanged,
+              ),
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -885,13 +1231,27 @@ final class _MarkdownEditor extends StatelessWidget {
                 minLines: null,
                 textAlignVertical: TextAlignVertical.top,
                 decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: scheme.surfaceContainerLowest,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: scheme.outlineVariant),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: scheme.outlineVariant),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: scheme.primary),
+                  ),
                   hintText: tr.editor.workspace.markdown.writeHint,
+                  contentPadding: const EdgeInsets.all(16),
                 ),
                 style: const TextStyle(
                   fontFamily: 'monospace',
-                  fontSize: 15,
-                  height: 1.5,
+                  fontSize: 14.5,
+                  height: 1.55,
                 ),
               ),
             ),
@@ -907,6 +1267,7 @@ final class _BookSidebar extends StatelessWidget {
     required this.chapters,
     required this.activeChapterId,
     required this.depthOf,
+    required this.onClose,
     required this.onOpenAppSettings,
     required this.onOpenSettings,
     required this.onOpenHistory,
@@ -923,6 +1284,7 @@ final class _BookSidebar extends StatelessWidget {
   final List<BookChapterFile> chapters;
   final String? activeChapterId;
   final int Function(BookChapterFile) depthOf;
+  final VoidCallback onClose;
   final VoidCallback onOpenAppSettings;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenHistory;
@@ -938,59 +1300,86 @@ final class _BookSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      color: scheme.surfaceContainerLowest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              tr.editor.sidebar.title,
-              style: Theme.of(context).textTheme.titleMedium,
+          SizedBox(
+            height: 40,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: 14, end: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      tr.editor.sidebar.title.toUpperCase(),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        letterSpacing: 0.7,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: tr.app.actions.close,
+                    onPressed: onClose,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.chevron_left_rounded, size: 19),
+                  ),
+                ],
+              ),
             ),
           ),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.tune_outlined),
-            title: Text(tr.editor.sidebar.settings.title),
-            subtitle: Text(tr.editor.sidebar.settings.subtitle),
+          _SidebarAction(
+            icon: Icons.tune_outlined,
+            title: tr.editor.sidebar.settings.title,
+            subtitle: tr.editor.sidebar.settings.subtitle,
             onTap: onOpenSettings,
           ),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.history_rounded),
-            title: Text(tr.editor.sidebar.history.title),
-            subtitle: Text(tr.editor.sidebar.history.subtitle),
+          _SidebarAction(
+            icon: Icons.history_rounded,
+            title: tr.editor.sidebar.history.title,
+            subtitle: tr.editor.sidebar.history.subtitle,
             onTap: onOpenHistory,
           ),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.settings_outlined),
-            title: Text(tr.editor.sidebar.appSettings),
+          _SidebarAction(
+            icon: Icons.settings_outlined,
+            title: tr.editor.sidebar.appSettings,
             onTap: onOpenAppSettings,
           ),
+          const SizedBox(height: 4),
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 8, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    tr.editor.chapterManager.title,
-                    style: Theme.of(context).textTheme.titleMedium,
+          SizedBox(
+            height: 42,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: 14, end: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      tr.editor.chapterManager.title.toUpperCase(),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        letterSpacing: 0.7,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-                IconButton(
-                  tooltip: tr.editor.chapterManager.add,
-                  onPressed: onAddChapter,
-                  icon: const Icon(Icons.add_rounded),
-                ),
-              ],
+                  IconButton(
+                    tooltip: tr.editor.chapterManager.add,
+                    onPressed: onAddChapter,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.add_rounded, size: 19),
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
             child: ReorderableListView.builder(
+              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
               buildDefaultDragHandles: false,
               itemCount: chapters.length,
               onReorder: (oldIndex, newIndex) {
@@ -999,67 +1388,82 @@ final class _BookSidebar extends StatelessWidget {
               itemBuilder: (context, index) {
                 final chapter = chapters[index];
                 final depth = depthOf(chapter);
+                final selected = chapter.id == activeChapterId;
                 return Padding(
                   key: ValueKey(chapter.id),
-                  padding: EdgeInsetsDirectional.only(start: (depth - 1) * 18.0),
-                  child: ListTile(
-                    dense: true,
-                    selected: chapter.id == activeChapterId,
-                    leading: ReorderableDragStartListener(
-                      index: index,
-                      child: Icon(
-                        depth == 1
-                            ? Icons.menu_book_outlined
-                            : Icons.subdirectory_arrow_right_rounded,
+                  padding: EdgeInsetsDirectional.only(start: (depth - 1) * 14.0),
+                  child: Material(
+                    color: selected
+                        ? scheme.primaryContainer.withValues(alpha: 0.45)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    child: ListTile(
+                      dense: true,
+                      minTileHeight: 42,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ),
-                    title: Text(
-                      chapter.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      tr.editor.chapterManager.number(number: index + 1),
-                    ),
-                    onTap: () => onSelectChapter(chapter),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'child':
-                            onAddChild(chapter);
-                          case 'rename':
-                            onRenameChapter(chapter);
-                          case 'up':
-                            onMoveChapterUp(chapter);
-                          case 'down':
-                            onMoveChapterDown(chapter);
-                          case 'delete':
-                            onDeleteChapter(chapter);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'child',
-                          child: Text(tr.editor.chapterManager.addChild),
+                      selected: selected,
+                      leading: ReorderableDragStartListener(
+                        index: index,
+                        child: Icon(
+                          depth == 1
+                              ? Icons.description_outlined
+                              : Icons.subdirectory_arrow_right_rounded,
+                          size: 18,
+                          color: selected ? scheme.primary : scheme.onSurfaceVariant,
                         ),
-                        PopupMenuItem(
-                          value: 'rename',
-                          child: Text(tr.editor.chapterManager.rename),
+                      ),
+                      title: Text(
+                        chapter.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: selected ? FontWeight.w600 : null,
                         ),
-                        PopupMenuItem(
-                          value: 'up',
-                          child: Text(tr.editor.chapterManager.moveUp),
-                        ),
-                        PopupMenuItem(
-                          value: 'down',
-                          child: Text(tr.editor.chapterManager.moveDown),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text(tr.app.actions.delete),
-                        ),
-                      ],
+                      ),
+                      onTap: () => onSelectChapter(chapter),
+                      trailing: PopupMenuButton<String>(
+                        iconSize: 18,
+                        padding: EdgeInsets.zero,
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'child':
+                              onAddChild(chapter);
+                            case 'rename':
+                              onRenameChapter(chapter);
+                            case 'up':
+                              onMoveChapterUp(chapter);
+                            case 'down':
+                              onMoveChapterDown(chapter);
+                            case 'delete':
+                              onDeleteChapter(chapter);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'child',
+                            child: Text(tr.editor.chapterManager.addChild),
+                          ),
+                          PopupMenuItem(
+                            value: 'rename',
+                            child: Text(tr.editor.chapterManager.rename),
+                          ),
+                          PopupMenuItem(
+                            value: 'up',
+                            child: Text(tr.editor.chapterManager.moveUp),
+                          ),
+                          PopupMenuItem(
+                            value: 'down',
+                            child: Text(tr.editor.chapterManager.moveDown),
+                          ),
+                          const PopupMenuDivider(),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Text(tr.app.actions.delete),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -1067,6 +1471,43 @@ final class _BookSidebar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+final class _SidebarAction extends StatelessWidget {
+  const _SidebarAction({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      child: ListTile(
+        minTileHeight: 44,
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        leading: Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+        title: Text(title),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+          subtitle!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: onTap,
       ),
     );
   }
@@ -1193,6 +1634,7 @@ final class _SaveStatusView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
     final (icon, label) = switch (status) {
       SaveStatus.loading => (Icons.hourglass_empty_rounded, tr.app.status.loading),
       SaveStatus.saving => (Icons.sync_rounded, tr.app.status.saving),
@@ -1205,9 +1647,14 @@ final class _SaveStatusView extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 6),
-          Text(label),
+          Icon(icon, size: 14, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );
