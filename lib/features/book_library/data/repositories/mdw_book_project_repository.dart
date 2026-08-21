@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:markweft_simple_book/features/book_library/data/mappers/book_settings_json.dart';
+import 'package:markweft_simple_book/features/book_library/data/services/mdw_atomic_file_service.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/mdw_version_converter.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/book_chapter_file.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
@@ -14,6 +15,8 @@ import 'package:path/path.dart' as path;
 import 'package:yaml/yaml.dart';
 
 final class MdwBookProjectRepository implements BookProjectRepository {
+  static const MdwAtomicFileService _atomicFileService = MdwAtomicFileService();
+
   static const XTypeGroup _projectType = XTypeGroup(
     label: 'Markweft book',
     extensions: <String>['mdw'],
@@ -85,7 +88,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
 
   @override
   Future<MarkweftProject> openProject(String projectPath) async {
-    final projectFile = File(projectPath);
+    final projectFile = await _atomicFileService.recoverIfNeeded(File(projectPath));
     if (!await projectFile.exists()) {
       throw FileSystemException('Project file does not exist.', projectPath);
     }
@@ -303,7 +306,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    await project.file.writeAsBytes(encoded, flush: true);
+    await _atomicFileService.write(project.file, encoded);
   }
 
   @override

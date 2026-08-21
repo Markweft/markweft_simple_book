@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:markweft_simple_book/features/book_library/data/services/mdw_atomic_file_service.dart';
 import 'package:markweft_simple_book/features/book_library/data/mappers/book_settings_json.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 import 'package:path/path.dart' as path;
@@ -31,6 +32,8 @@ final class MdwConversionResult {
 
 final class MdwVersionConverter {
   const MdwVersionConverter();
+
+  static const MdwAtomicFileService _atomicFileService = MdwAtomicFileService();
 
   static const int currentVersion = 3;
   static const Set<int> supportedVersions = <int>{1, 3};
@@ -74,7 +77,7 @@ final class MdwVersionConverter {
       );
     }
 
-    final sourceFile = File(sourcePath);
+    final sourceFile = await _atomicFileService.recoverIfNeeded(File(sourcePath));
     final workspace = await _createWorkspace();
 
     try {
@@ -148,7 +151,8 @@ final class MdwVersionConverter {
   Future<int> inspectVersion(String projectPath) async {
     final workspace = await _createWorkspace();
     try {
-      await _extract(File(projectPath), workspace);
+      final projectFile = await _atomicFileService.recoverIfNeeded(File(projectPath));
+      await _extract(projectFile, workspace);
       return _readVersion(workspace);
     } finally {
       if (await workspace.exists()) {
