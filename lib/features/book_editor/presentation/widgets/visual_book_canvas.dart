@@ -140,7 +140,7 @@ final class _VisualBookCanvasState extends State<VisualBookCanvas> {
   void _goToPage(int index) {
     final document = _document;
     if (document == null || document.pages.isEmpty) return;
-    final target = index.clamp(0, document.pages.length - 1);
+    final target = index.clamp(0, document.pages.length - 1).toInt();
     if (_selectedPageIndex != target) {
       setState(() => _selectedPageIndex = target);
     }
@@ -161,6 +161,49 @@ final class _VisualBookCanvasState extends State<VisualBookCanvas> {
     final tr = Translations.of(context);
     final document = _document;
     final pageCount = document?.pages.length ?? 0;
+
+    Widget body;
+    if (_parseError case final error?) {
+      body = _CanvasError(error: error);
+    } else if (document == null) {
+      body = const SizedBox.shrink();
+    } else if (document.pages.isEmpty) {
+      body = Center(child: Text(tr.editor.workspace.canvasEmpty));
+    } else {
+      body = LayoutBuilder(
+        builder: (context, constraints) {
+          final showNavigator = constraints.maxWidth >= 640;
+          return Row(
+            children: [
+              if (showNavigator) ...[
+                SizedBox(
+                  width: 82,
+                  child: _PageNavigator(
+                    pages: document.pages,
+                    selectedIndex: _selectedPageIndex,
+                    title: tr.editor.workspace.canvasPages,
+                    onSelected: _goToPage,
+                  ),
+                ),
+                const VerticalDivider(width: 1),
+              ],
+              Expanded(
+                child: _CanvasViewport(
+                  template: widget.template,
+                  settings: widget.settings,
+                  pages: document.pages,
+                  pageKeys: _pageKeys,
+                  zoom: _zoom,
+                  verticalController: _verticalController,
+                  horizontalController: _horizontalController,
+                  onViewportSizeChanged: (value) => _viewportSize = value,
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     return ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainer,
@@ -187,49 +230,7 @@ final class _VisualBookCanvasState extends State<VisualBookCanvas> {
             onFitPage: _fitPage,
           ),
           const Divider(height: 1),
-          Expanded(
-            child: switch ((_parseError, document)) {
-              (final error?, _) => _CanvasError(error: error),
-              (_, null) => const SizedBox.shrink(),
-              (_, final value) when value.pages.isEmpty => Center(
-                  child: Text(tr.editor.workspace.canvasEmpty),
-                ),
-              (_, final value) => LayoutBuilder(
-                  builder: (context, constraints) {
-                    final showNavigator = constraints.maxWidth >= 640;
-                    return Row(
-                      children: [
-                        if (showNavigator) ...[
-                          SizedBox(
-                            width: 82,
-                            child: _PageNavigator(
-                              pages: value.pages,
-                              selectedIndex: _selectedPageIndex,
-                              title: tr.editor.workspace.canvasPages,
-                              onSelected: _goToPage,
-                            ),
-                          ),
-                          const VerticalDivider(width: 1),
-                        ],
-                        Expanded(
-                          child: _CanvasViewport(
-                            template: widget.template,
-                            settings: widget.settings,
-                            pages: value.pages,
-                            pageKeys: _pageKeys,
-                            zoom: _zoom,
-                            verticalController: _verticalController,
-                            horizontalController: _horizontalController,
-                            onViewportSizeChanged: (value) =>
-                                _viewportSize = value,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-            },
-          ),
+          Expanded(child: body),
         ],
       ),
     );
@@ -282,7 +283,11 @@ final class _CanvasToolbar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
-              Icon(Icons.dashboard_customize_outlined, size: 17, color: scheme.primary),
+              Icon(
+                Icons.dashboard_customize_outlined,
+                size: 17,
+                color: scheme.primary,
+              ),
               const SizedBox(width: 7),
               Text(
                 chapterTitle == null ? title : '$title · $chapterTitle',
@@ -313,9 +318,12 @@ final class _CanvasToolbar extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.remove_rounded, size: 18),
               ),
-              TextButton(
-                onPressed: onResetZoom,
-                child: Text(percentage),
+              Tooltip(
+                message: tr.editor.workspace.canvasResetZoom,
+                child: TextButton(
+                  onPressed: onResetZoom,
+                  child: Text(percentage),
+                ),
               ),
               IconButton(
                 tooltip: tr.editor.workspace.canvasZoomIn,
@@ -394,33 +402,34 @@ final class _PageNavigator extends StatelessWidget {
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: selected ? scheme.primary : scheme.outlineVariant,
+                          color: selected
+                              ? scheme.primary
+                              : scheme.outlineVariant,
                         ),
                       ),
-                      child: Column(
-                        children: [
-                          AspectRatio(
-                            aspectRatio: page.settings.aspectRatio,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: scheme.surface,
-                                borderRadius: BorderRadius.circular(2),
-                                border: Border.all(color: scheme.outlineVariant),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${index + 1}',
-                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: selected
-                                            ? scheme.primary
-                                            : scheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                ),
-                              ),
+                      child: AspectRatio(
+                        aspectRatio: page.settings.aspectRatio,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: scheme.surface,
+                            borderRadius: BorderRadius.circular(2),
+                            border: Border.all(color: scheme.outlineVariant),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: selected
+                                        ? scheme.primary
+                                        : scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -470,7 +479,9 @@ final class _CanvasViewport extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: Padding(
-                  padding: const EdgeInsets.all(_VisualBookCanvasState._canvasPadding),
+                  padding: const EdgeInsets.all(
+                    _VisualBookCanvasState._canvasPadding,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -482,7 +493,8 @@ final class _CanvasViewport extends StatelessWidget {
                           page: pages[index],
                           zoom: zoom,
                         ),
-                        if (index < pages.length - 1) const SizedBox(height: 28),
+                        if (index < pages.length - 1)
+                          const SizedBox(height: 28),
                       ],
                     ],
                   ),
