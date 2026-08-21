@@ -209,17 +209,23 @@ jobs:
               raise SystemExit('Workspace method insertion point not found')
           text = text.replace(marker, insert + marker, 1)
 
-          replace(
-              "        _saveStatus = SaveStatus.saved;\n"
-              "        _errorMessage = null;\n"
-              "      });\n"
-              "    } on Object catch (error) {\n",
-              "        _saveStatus = SaveStatus.saved;\n"
-              "        _errorMessage = null;\n"
-              "      });\n"
-              "      _scheduleWorkspaceSave();\n"
-              "    } on Object catch (error) {\n",
-          )
+          select_block = """        _saveStatus = SaveStatus.saved;
+        _errorMessage = null;
+      });
+    } on Object catch (error) {
+"""
+          select_replacement = """        _saveStatus = SaveStatus.saved;
+        _errorMessage = null;
+      });
+      _scheduleWorkspaceSave();
+    } on Object catch (error) {
+"""
+          # Replace the second matching save-success block, which belongs to chapter selection.
+          first = text.find(select_block)
+          second = text.find(select_block, first + 1)
+          if second < 0:
+              raise SystemExit('Chapter selection persistence point not found')
+          text = text[:second] + select_replacement + text[second + len(select_block):]
 
           replace(
               "        _openChapterIds.remove(chapter.id);\n"
