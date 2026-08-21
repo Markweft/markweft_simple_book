@@ -1,0 +1,110 @@
+name: Apply welcome card layout fix
+
+on:
+  push:
+    branches:
+      - feature/book-settings-chapters
+    paths:
+      - .github/workflows/apply-welcome-card-layout-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/book-settings-chapters
+          fetch-depth: 0
+
+      - name: Fix welcome quick action cards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/features/book_library/presentation/pages/welcome_page.dart')
+          text = path.read_text()
+
+          marker = '''        final width =
+            (constraints.maxWidth - (columns - 1) * gap) / columns;
+'''
+          replacement = '''        final width =
+            (constraints.maxWidth - (columns - 1) * gap) / columns;
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final baseHeight = switch (columns) {
+          4 => 156.0,
+          2 => 142.0,
+          _ => 124.0,
+        };
+        final cardHeight = baseHeight * textScale.clamp(1.0, 1.3);
+'''
+          if marker not in text:
+              raise SystemExit('quick action width marker not found')
+          text = text.replace(marker, replacement, 1)
+
+          text = text.replace('''            _ActionCard(
+              width: width,
+              icon: Icons.add_rounded,''', '''            _ActionCard(
+              width: width,
+              height: cardHeight,
+              icon: Icons.add_rounded,''', 1)
+          text = text.replace('''            _ActionCard(
+              width: width,
+              icon: Icons.folder_open_rounded,''', '''            _ActionCard(
+              width: width,
+              height: cardHeight,
+              icon: Icons.folder_open_rounded,''', 1)
+          text = text.replace('''            _ActionCard(
+              width: width,
+              icon: Icons.upload_file_rounded,''', '''            _ActionCard(
+              width: width,
+              height: cardHeight,
+              icon: Icons.upload_file_rounded,''', 1)
+          text = text.replace('''            _ActionCard(
+              width: width,
+              icon: Icons.swap_horiz_rounded,''', '''            _ActionCard(
+              width: width,
+              height: cardHeight,
+              icon: Icons.swap_horiz_rounded,''', 1)
+
+          text = text.replace('''  const _ActionCard({
+    required this.width,
+    required this.icon,''', '''  const _ActionCard({
+    required this.width,
+    required this.height,
+    required this.icon,''', 1)
+          text = text.replace('''
+  static const double _height = 132;
+
+  final double width;
+''', '''
+  final double width;
+  final double height;
+''', 1)
+          text = text.replace('''      width: width,
+      height: _height,''', '''      width: width,
+      height: height,''', 1)
+          text = text.replace('''                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,''', '''                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,''', 1)
+          text = text.replace('''                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,''', '''                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,''', 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Format
+        run: dart format lib/features/book_library/presentation/pages/welcome_page.dart
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/features/book_library/presentation/pages/welcome_page.dart
+          git commit -m "Fix responsive welcome action cards" || exit 0
+          git push origin HEAD:feature/book-settings-chapters
