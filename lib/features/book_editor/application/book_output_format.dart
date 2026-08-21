@@ -10,5 +10,6 @@ enum BookPreviewScope {
 
 enum BookWorkspaceMode {
   edit,
+  canvas,
   preview,
 }
