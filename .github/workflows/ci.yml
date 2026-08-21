@@ -4,7 +4,100 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
+  apply-welcome-card-fix:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/book-settings-chapters'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: feature/book-settings-chapters
+          fetch-depth: 0
+
+      - name: Make quick action cards adaptive
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/features/book_library/presentation/pages/welcome_page.dart')
+          text = path.read_text()
+          original = text
+
+          marker = '''        final width =
+            (constraints.maxWidth - (columns - 1) * gap) / columns;
+'''
+          replacement = '''        final width =
+            (constraints.maxWidth - (columns - 1) * gap) / columns;
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final baseHeight = switch (columns) {
+          4 => 156.0,
+          2 => 142.0,
+          _ => 124.0,
+        };
+        final cardHeight = baseHeight * textScale.clamp(1.0, 1.3);
+'''
+          if marker in text:
+              text = text.replace(marker, replacement, 1)
+
+          cards = [
+              'Icons.add_rounded',
+              'Icons.folder_open_rounded',
+              'Icons.upload_file_rounded',
+              'Icons.swap_horiz_rounded',
+          ]
+          for icon in cards:
+              old = f'''            _ActionCard(\n              width: width,\n              icon: {icon},'''
+              new = f'''            _ActionCard(\n              width: width,\n              height: cardHeight,\n              icon: {icon},'''
+              text = text.replace(old, new, 1)
+
+          text = text.replace('''  const _ActionCard({
+    required this.width,
+    required this.icon,''', '''  const _ActionCard({
+    required this.width,
+    required this.height,
+    required this.icon,''', 1)
+          text = text.replace('''
+  static const double _height = 132;
+
+  final double width;
+''', '''
+  final double width;
+  final double height;
+''', 1)
+          text = text.replace('''      width: width,
+      height: _height,''', '''      width: width,
+      height: height,''', 1)
+          text = text.replace('''                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,''', '''                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,''', 1)
+          text = text.replace('''                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,''', '''                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,''', 1)
+
+          if text != original:
+              path.write_text(text)
+          PY
+
+      - name: Format
+        run: dart format lib/features/book_library/presentation/pages/welcome_page.dart
+
+      - name: Commit fix
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/features/book_library/presentation/pages/welcome_page.dart
+          git commit -m "Fix responsive welcome action cards"
+          git push origin HEAD:feature/book-settings-chapters
+
   flutter:
     runs-on: macos-latest
     steps:
