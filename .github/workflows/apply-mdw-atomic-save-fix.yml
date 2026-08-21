@@ -1,4 +1,5 @@
 name: Apply MDW atomic save fix
+# trigger after workflow registration
 
 on:
   push:
