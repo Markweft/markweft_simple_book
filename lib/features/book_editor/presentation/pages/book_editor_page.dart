@@ -449,7 +449,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(
-            labelText: tr.dialogs.chapterTitle.fieldLabel,
+            labelText: tr.dialogs.chapterTitle,
           ),
           onSubmitted: (value) {
             final text = value.trim();

@@ -34,7 +34,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   final BookProjectRepository _projectRepository = MdwBookProjectRepository();
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
   final MacosSecurityScopedBookmarkService _bookmarkService =
-      const MacosSecurityScopedBookmarkService();
+  const MacosSecurityScopedBookmarkService();
   final MdwVersionConverter _versionConverter = const MdwVersionConverter();
   final AppSettingsStore _appSettingsStore = const AppSettingsStore();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
@@ -131,7 +131,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     );
     if (title == null) return;
     await _runProjectAction(
-      () => _projectRepository.createProject(title: title),
+          () => _projectRepository.createProject(title: title),
     );
   }
 
@@ -142,7 +142,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     );
     if (title == null) return;
     await _runProjectAction(
-      () => _projectRepository.importMarkdown(title: title),
+          () => _projectRepository.importMarkdown(title: title),
     );
   }
 
@@ -306,7 +306,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
       if (choice.openAfter) {
         await _runProjectAction(
-          () => _projectRepository.openProject(result!.outputPath),
+              () => _projectRepository.openProject(result!.outputPath),
         );
       }
     } on Object catch (error) {
@@ -356,7 +356,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
 
     if (mounted) setState(() => _isBusy = false);
     await _runProjectAction(
-      () => _projectRepository.openProject(selected.path),
+          () => _projectRepository.openProject(selected.path),
     );
   }
 
@@ -381,7 +381,7 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
         _activeSecurityScopedPath = resolvedPath;
         await _runProjectAction(
-          () => _projectRepository.openProject(resolvedPath),
+              () => _projectRepository.openProject(resolvedPath),
         );
         return;
       } on Object catch (error) {
@@ -397,8 +397,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   }
 
   Future<void> _runProjectAction(
-    Future<MarkweftProject?> Function() action,
-  ) async {
+      Future<MarkweftProject?> Function() action,
+      ) async {
     setState(() {
       _isBusy = true;
       _errorMessage = null;
@@ -495,31 +495,31 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       supportedLocales: AppLocaleUtils.supportedLocales,
       home: _activeProject == null
           ? WelcomePage(
-              isBusy: _isBusy,
-              errorMessage: _errorMessage,
-              recentProjects: _recentProjects,
-              recentProjectVersions: _recentProjectVersions,
-              currentMdwVersion: MdwVersionConverter.currentVersion,
-              showRecentBookPaths: _appSettings.showRecentBookPaths,
-              onOpenAppSettings: _openAppSettings,
-              onCreateBook: _createProject,
-              onOpenBook: _pickProject,
-              onImportMarkdown: _importMarkdown,
-              onConvertBookVersion: () => _convertBookVersion(),
-              onConvertRecent: (projectPath) => _convertBookVersion(
-                sourcePath: projectPath,
-                targetVersion: MdwVersionConverter.currentVersion,
-              ),
-              onOpenRecent: _openRecentProject,
-              onRemoveRecent: _removeRecentProject,
-            )
+        isBusy: _isBusy,
+        errorMessage: _errorMessage,
+        recentProjects: _recentProjects,
+        recentProjectVersions: _recentProjectVersions,
+        currentMdwVersion: MdwVersionConverter.currentVersion,
+        showRecentBookPaths: _appSettings.showRecentBookPaths,
+        onOpenAppSettings: _openAppSettings,
+        onCreateBook: _createProject,
+        onOpenBook: _pickProject,
+        onImportMarkdown: _importMarkdown,
+        onConvertBookVersion: () => _convertBookVersion(),
+        onConvertRecent: (projectPath) => _convertBookVersion(
+          sourcePath: projectPath,
+          targetVersion: MdwVersionConverter.currentVersion,
+        ),
+        onOpenRecent: _openRecentProject,
+        onRemoveRecent: _removeRecentProject,
+      )
           : BookEditorPage(
-              key: ValueKey(_activeProject!.file.path),
-              project: _activeProject!,
-              projectRepository: _projectRepository,
-              onOpenAppSettings: _openAppSettings,
-              onClose: _closeProject,
-            ),
+        key: ValueKey(_activeProject!.file.path),
+        project: _activeProject!,
+        projectRepository: _projectRepository,
+        onOpenAppSettings: _openAppSettings,
+        onClose: _closeProject,
+      ),
     );
   }
 }
