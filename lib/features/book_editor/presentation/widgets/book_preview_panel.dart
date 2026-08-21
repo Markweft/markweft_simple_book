@@ -5,9 +5,12 @@ import 'package:markdown_widget/markdown_widget.dart';
 import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 import 'package:markweft_simple_book/features/book_editor/application/book_compilation_service.dart';
 import 'package:markweft_simple_book/features/book_editor/application/book_output_format.dart';
+import 'package:markweft_simple_book/features/book_editor/presentation/widgets/visual_book_canvas.dart';
 import 'package:markweft_simple_book/features/book_library/domain/entities/markweft_project.dart';
 import 'package:markweft_simple_book/features/book_library/domain/repositories/book_project_repository.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
+
+enum _PreviewSurfaceMode { canvas, output }
 
 final class BookPreviewPanel extends StatefulWidget {
   const BookPreviewPanel({
@@ -43,6 +46,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
 
   late BookOutputFormat _format;
   late BookPreviewScope _scope;
+  _PreviewSurfaceMode _surface = _PreviewSurfaceMode.canvas;
   String? _wholeBookMarkdown;
   bool _loadingWholeBook = false;
   Object? _wholeBookError;
@@ -134,11 +138,13 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
       child: Column(
         children: [
           _PreviewToolbar(
+            surface: _surface,
             supportedFormats: _supportedFormats,
             format: _format,
             scope: _scope,
             chapterTitle: widget.chapterTitle,
             loading: _loadingWholeBook,
+            onSurfaceChanged: (value) => setState(() => _surface = value),
             onFormatChanged: (value) => setState(() => _format = value),
             onScopeChanged: _setScope,
             onOpenCurrentChapter: _scope == BookPreviewScope.book
@@ -185,6 +191,16 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
     }
 
     final source = markdown ?? '';
+    if (_surface == _PreviewSurfaceMode.canvas) {
+      return VisualBookCanvas(
+        template: widget.template,
+        settings: widget.settings,
+        markdown: source,
+        chapterTitle:
+            _scope == BookPreviewScope.chapter ? widget.chapterTitle : null,
+      );
+    }
+
     return switch (_format) {
       BookOutputFormat.pdf => _PdfPreview(
           template: widget.template,
@@ -198,22 +214,26 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
 
 final class _PreviewToolbar extends StatelessWidget {
   const _PreviewToolbar({
+    required this.surface,
     required this.supportedFormats,
     required this.format,
     required this.scope,
     required this.chapterTitle,
     required this.loading,
+    required this.onSurfaceChanged,
     required this.onFormatChanged,
     required this.onScopeChanged,
     required this.onOpenCurrentChapter,
     required this.onRefresh,
   });
 
+  final _PreviewSurfaceMode surface;
   final List<BookOutputFormat> supportedFormats;
   final BookOutputFormat format;
   final BookPreviewScope scope;
   final String? chapterTitle;
   final bool loading;
+  final ValueChanged<_PreviewSurfaceMode> onSurfaceChanged;
   final ValueChanged<BookOutputFormat> onFormatChanged;
   final Future<void> Function(BookPreviewScope) onScopeChanged;
   final VoidCallback? onOpenCurrentChapter;
@@ -230,42 +250,63 @@ final class _PreviewToolbar extends StatelessWidget {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          if (supportedFormats.length > 1)
-            SegmentedButton<BookOutputFormat>(
-              showSelectedIcon: false,
-              segments: [
-                for (final value in supportedFormats)
-                  ButtonSegment(
-                    value: value,
-                    icon: Icon(
-                      value == BookOutputFormat.pdf
-                          ? Icons.picture_as_pdf_outlined
-                          : Icons.menu_book_outlined,
-                    ),
-                    label: Text(
-                      value == BookOutputFormat.pdf
-                          ? tr.editor.previewPanel.format.pdf
-                          : tr.editor.previewPanel.format.epub,
-                    ),
-                  ),
-              ],
-              selected: {format},
-              onSelectionChanged: (selection) => onFormatChanged(selection.first),
-            )
-          else if (supportedFormats.isNotEmpty)
-            Chip(
-              avatar: Icon(
-                supportedFormats.first == BookOutputFormat.pdf
-                    ? Icons.picture_as_pdf_outlined
-                    : Icons.menu_book_outlined,
-                size: 17,
+          SegmentedButton<_PreviewSurfaceMode>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: _PreviewSurfaceMode.canvas,
+                icon: const Icon(Icons.dashboard_customize_outlined),
+                label: Text(tr.editor.workspace.modes.canvas),
               ),
-              label: Text(
-                supportedFormats.first == BookOutputFormat.pdf
-                    ? tr.editor.previewPanel.format.pdf
-                    : tr.editor.previewPanel.format.epub,
+              ButtonSegment(
+                value: _PreviewSurfaceMode.output,
+                icon: const Icon(Icons.visibility_outlined),
+                label: Text(tr.editor.workspace.modes.preview),
               ),
-            ),
+            ],
+            selected: {surface},
+            onSelectionChanged: (selection) =>
+                onSurfaceChanged(selection.first),
+          ),
+          if (surface == _PreviewSurfaceMode.output) ...[
+            if (supportedFormats.length > 1)
+              SegmentedButton<BookOutputFormat>(
+                showSelectedIcon: false,
+                segments: [
+                  for (final value in supportedFormats)
+                    ButtonSegment(
+                      value: value,
+                      icon: Icon(
+                        value == BookOutputFormat.pdf
+                            ? Icons.picture_as_pdf_outlined
+                            : Icons.menu_book_outlined,
+                      ),
+                      label: Text(
+                        value == BookOutputFormat.pdf
+                            ? tr.editor.previewPanel.format.pdf
+                            : tr.editor.previewPanel.format.epub,
+                      ),
+                    ),
+                ],
+                selected: {format},
+                onSelectionChanged: (selection) =>
+                    onFormatChanged(selection.first),
+              )
+            else if (supportedFormats.isNotEmpty)
+              Chip(
+                avatar: Icon(
+                  supportedFormats.first == BookOutputFormat.pdf
+                      ? Icons.picture_as_pdf_outlined
+                      : Icons.menu_book_outlined,
+                  size: 17,
+                ),
+                label: Text(
+                  supportedFormats.first == BookOutputFormat.pdf
+                      ? tr.editor.previewPanel.format.pdf
+                      : tr.editor.previewPanel.format.epub,
+                ),
+              ),
+          ],
           SegmentedButton<BookPreviewScope>(
             showSelectedIcon: false,
             segments: [
