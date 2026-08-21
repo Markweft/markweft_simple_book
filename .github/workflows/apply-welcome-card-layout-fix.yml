@@ -1,4 +1,5 @@
 name: Apply welcome card layout fix
+# one-time trigger
 
 on:
   push:
