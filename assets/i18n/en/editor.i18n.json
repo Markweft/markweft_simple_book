@@ -2,6 +2,7 @@
   "workspace": {
     "modes": {
       "edit": "Edit",
+      "canvas": "Canvas",
       "preview": "Preview"
     },
     "markdown": {
@@ -9,7 +10,18 @@
       "chapterTitle": "Markdown · {title}",
       "chapterOnlyLoaded": "Only this chapter is loaded into the editor.",
       "writeHint": "Write this chapter in Markdown..."
-    }
+    },
+    "canvasTitle": "Visual canvas",
+    "canvasPage": "Page {current} of {total}",
+    "canvasPages": "Pages",
+    "canvasPagePrevious": "Previous page",
+    "canvasPageNext": "Next page",
+    "canvasZoomIn": "Zoom in",
+    "canvasZoomOut": "Zoom out",
+    "canvasResetZoom": "Reset to 100%",
+    "canvasFitWidth": "Fit width",
+    "canvasFitPage": "Fit page",
+    "canvasEmpty": "No pages to display"
   },
   "sidebar": {
     "title": "Book",
