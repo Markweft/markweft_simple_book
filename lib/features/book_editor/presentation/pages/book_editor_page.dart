@@ -1338,7 +1338,7 @@ final class _MarkdownEditor extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Live Markdown · Select text for formatting · Type / for blocks',
+                        tr.toolbar.smart.help,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -1360,7 +1360,7 @@ final class _MarkdownEditor extends StatelessWidget {
                         Icon(Icons.bolt_rounded, size: 15, color: scheme.primary),
                         const SizedBox(width: 4),
                         Text(
-                          'Live',
+                          tr.toolbar.smart.live,
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 color: scheme.primary,
                                 fontWeight: FontWeight.w700,
