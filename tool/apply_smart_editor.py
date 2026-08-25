@@ -1,7 +1,7 @@
 from pathlib import Path
 
-path = Path('lib/features/book_editor/presentation/pages/book_editor_page.dart')
-text = path.read_text()
+page_path = Path('lib/features/book_editor/presentation/pages/book_editor_page.dart')
+text = page_path.read_text()
 original = text
 
 old_import = "import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';\n"
@@ -69,7 +69,7 @@ replacement = r'''final class _MarkdownEditor extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Live Markdown · Select text for formatting · Type / for blocks',
+                        tr.toolbar.smart.help,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -91,7 +91,7 @@ replacement = r'''final class _MarkdownEditor extends StatelessWidget {
                         Icon(Icons.bolt_rounded, size: 15, color: scheme.primary),
                         const SizedBox(width: 4),
                         Text(
-                          'Live',
+                          tr.toolbar.smart.live,
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 color: scheme.primary,
                                 fontWeight: FontWeight.w700,
@@ -121,8 +121,19 @@ replacement = r'''final class _MarkdownEditor extends StatelessWidget {
 
 '''
 
-if 'final SmartMarkdownController controller;' not in text[start:end]:
+if 'final SmartMarkdownController controller;' not in text[start:end] or 'tr.toolbar.smart.help' not in text[start:end]:
     text = text[:start] + replacement + text[end:]
 
 if text != original:
-    path.write_text(text)
+    page_path.write_text(text)
+
+smart_path = Path('lib/features/book_editor/presentation/widgets/smart_markdown_editor.dart')
+smart = smart_path.read_text()
+smart_original = smart
+smart = smart.replace("        const _SlashCommand(\n          label: 'Table',", "        _SlashCommand(\n          label: tr.toolbar.insert.table,")
+smart = smart.replace("        const _SlashCommand(\n          label: 'Code block',", "        _SlashCommand(\n          label: tr.toolbar.formatting.codeBlock,")
+smart = smart.replace("        label: 'Underline',", "        label: tr.toolbar.formatting.underline,")
+smart = smart.replace("        label: 'Strike',", "        label: tr.toolbar.formatting.strike,")
+smart = smart.replace("        label: 'Code',", "        label: tr.toolbar.formatting.inlineCode,")
+if smart != smart_original:
+    smart_path.write_text(smart)
