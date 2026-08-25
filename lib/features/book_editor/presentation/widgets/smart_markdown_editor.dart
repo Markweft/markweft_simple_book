@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:markweft_simple_book/core/i18n/translations.g.dart';
 import 'package:markweft_template_simple/markweft_template_simple.dart';
 
@@ -54,7 +53,7 @@ final class SmartMarkdownController extends TextEditingController {
           TextSpan(
             text: '${headingMatch.group(1)}${headingMatch.group(2)}',
             style: baseStyle.copyWith(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.45),
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.38),
               fontSize: sizes[level],
               fontWeight: FontWeight.w700,
             ),
@@ -67,7 +66,7 @@ final class SmartMarkdownController extends TextEditingController {
               color: scheme.onSurface,
               fontSize: sizes[level],
               height: 1.25,
-              fontWeight: level <= 2 ? FontWeight.w750 : FontWeight.w650,
+              fontWeight: level <= 2 ? FontWeight.w700 : FontWeight.w600,
               letterSpacing: level <= 2 ? -0.35 : null,
             ),
           ),
@@ -179,9 +178,9 @@ final class SmartMarkdownController extends TextEditingController {
           children,
           token,
           delimiterLength: 2,
-          contentStyle: baseStyle.copyWith(fontWeight: FontWeight.w750),
+          contentStyle: baseStyle.copyWith(fontWeight: FontWeight.w700),
           markerStyle: baseStyle.copyWith(
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.38),
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
           ),
         );
       } else if (token.startsWith('~~')) {
@@ -193,7 +192,7 @@ final class SmartMarkdownController extends TextEditingController {
             decoration: TextDecoration.lineThrough,
           ),
           markerStyle: baseStyle.copyWith(
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.38),
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
           ),
         );
       } else if (token.startsWith('`')) {
@@ -217,7 +216,7 @@ final class SmartMarkdownController extends TextEditingController {
           delimiterLength: 1,
           contentStyle: baseStyle.copyWith(fontStyle: FontStyle.italic),
           markerStyle: baseStyle.copyWith(
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.38),
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
           ),
         );
       } else {
@@ -314,7 +313,7 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
     }
 
     final caret = selection.extentOffset.clamp(0, value.text.length);
-    final lineStart = value.text.lastIndexOf('\n', caret - 1) + 1;
+    final lineStart = caret == 0 ? 0 : value.text.lastIndexOf('\n', caret - 1) + 1;
     final beforeCaret = value.text.substring(lineStart, caret);
     final match = RegExp(r'(^|\s)/([\w-]*)$').firstMatch(beforeCaret);
     if (match == null) {
@@ -353,7 +352,6 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
           keywords: const ['h1', 'heading', 'title'],
           icon: Icons.title_rounded,
           insertion: '# ${tr.toolbar.headings.placeholder}',
-          cursorBack: 0,
         ),
       if (widget.actions.contains(TemplateToolbarAction.heading2))
         _SlashCommand(
@@ -361,7 +359,6 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
           keywords: const ['h2', 'heading', 'subtitle'],
           icon: Icons.text_fields_rounded,
           insertion: '## ${tr.toolbar.headings.placeholder}',
-          cursorBack: 0,
         ),
       if (widget.actions.contains(TemplateToolbarAction.bulletList))
         _SlashCommand(
@@ -389,21 +386,24 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
           label: tr.toolbar.insert.image,
           keywords: const ['image', 'picture', 'photo'],
           icon: Icons.image_outlined,
-          insertion: '![${tr.toolbar.placeholders.imageDescription}](assets/images/image.png)',
+          insertion:
+              '![${tr.toolbar.placeholders.imageDescription}](assets/images/image.png)',
         ),
       if (widget.actions.contains(TemplateToolbarAction.link))
         _SlashCommand(
           label: tr.toolbar.insert.link,
           keywords: const ['link', 'url'],
           icon: Icons.link_rounded,
-          insertion: '[${tr.toolbar.placeholders.linkText}](https://example.com)',
+          insertion:
+              '[${tr.toolbar.placeholders.linkText}](https://example.com)',
         ),
       if (widget.actions.contains(TemplateToolbarAction.table))
         const _SlashCommand(
           label: 'Table',
           keywords: ['table', 'grid'],
           icon: Icons.table_chart_outlined,
-          insertion: '| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |',
+          insertion:
+              '| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |',
         ),
       if (widget.actions.contains(TemplateToolbarAction.codeBlock))
         const _SlashCommand(
@@ -444,42 +444,39 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
     final scheme = Theme.of(context).colorScheme;
 
     return Positioned.fill(
-      child: IgnorePointer(
-        ignoring: false,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          targetAnchor: Alignment.topLeft,
-          followerAnchor: Alignment.topLeft,
-          offset: const Offset(18, 56),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 12,
-              shadowColor: Colors.black.withValues(alpha: 0.28),
-              color: scheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(14),
-              clipBehavior: Clip.antiAlias,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  minWidth: 280,
-                  maxWidth: 340,
-                  maxHeight: 360,
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  itemCount: commands.length,
-                  itemBuilder: (context, index) {
-                    final command = commands[index];
-                    return ListTile(
-                      dense: true,
-                      leading: Icon(command.icon, size: 19),
-                      title: Text(command.label),
-                      onTap: () => _applySlashCommand(command),
-                    );
-                  },
-                ),
+      child: CompositedTransformFollower(
+        link: _layerLink,
+        showWhenUnlinked: false,
+        targetAnchor: Alignment.topLeft,
+        followerAnchor: Alignment.topLeft,
+        offset: const Offset(18, 56),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 12,
+            shadowColor: Colors.black.withValues(alpha: 0.28),
+            color: scheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(14),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: 280,
+                maxWidth: 340,
+                maxHeight: 360,
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                itemCount: commands.length,
+                itemBuilder: (context, index) {
+                  final command = commands[index];
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(command.icon, size: 19),
+                    title: Text(command.label),
+                    onTap: () => _applySlashCommand(command),
+                  );
+                },
               ),
             ),
           ),
@@ -529,7 +526,7 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
     EditableTextState editableTextState,
   ) {
     final tr = Translations.of(context);
-    final items = <ContextMenuButtonItem>[
+    return <ContextMenuButtonItem>[
       ContextMenuButtonItem(
         label: tr.toolbar.formatting.bold,
         onPressed: () {
@@ -570,13 +567,15 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
           label: tr.toolbar.insert.link,
           onPressed: () {
             ContextMenuController.removeAny();
-            _wrapSelection('[', '](https://example.com)', fallback: tr.toolbar.placeholders.linkText);
+            _wrapSelection(
+              '[',
+              '](https://example.com)',
+              fallback: tr.toolbar.placeholders.linkText,
+            );
           },
         ),
-      const ContextMenuButtonItem(type: ContextMenuButtonType.separator),
       ...editableTextState.contextMenuButtonItems,
     ];
-    return items;
   }
 
   @override
@@ -588,6 +587,7 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
         controller: widget.controller,
         focusNode: _focusNode,
         onChanged: widget.onChanged,
+        onTapOutside: (_) => _removeSlashOverlay(),
         expands: true,
         maxLines: null,
         minLines: null,
@@ -595,9 +595,8 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
         contextMenuBuilder: (context, editableTextState) {
-          final anchor = editableTextState.contextMenuAnchors;
           return AdaptiveTextSelectionToolbar.buttonItems(
-            anchors: anchor,
+            anchors: editableTextState.contextMenuAnchors,
             buttonItems: _contextMenuItems(context, editableTextState),
           );
         },
