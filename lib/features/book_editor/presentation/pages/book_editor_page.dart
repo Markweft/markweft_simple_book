@@ -11,6 +11,7 @@ import 'package:markweft_simple_book/features/book_editor/application/template_r
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_preview_panel.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_settings_dialog.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';
+import 'package:markweft_simple_book/features/book_editor/presentation/widgets/smart_markdown_editor.dart';
 import 'package:markweft_simple_book/features/book_history/data/services/book_history_service.dart';
 import 'package:markweft_simple_book/features/book_history/presentation/pages/book_history_page.dart';
 import 'package:markweft_simple_book/features/book_library/data/extensions/chapter_management_repository_extensions.dart';
@@ -47,7 +48,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
       BookCompilationService();
   static const BookHistoryService _historyService = BookHistoryService();
 
-  late final TextEditingController _controller;
+  late final SmartMarkdownController _controller;
   Timer? _saveDebounce;
   Timer? _previewDebounce;
   Timer? _projectFlushDebounce;
@@ -91,7 +92,7 @@ final class _BookEditorPageState extends State<BookEditorPage> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController();
+    _controller = SmartMarkdownController();
     unawaited(_loadBook());
   }
 
@@ -1306,7 +1307,7 @@ final class _MarkdownEditor extends StatelessWidget {
     required this.onChanged,
   });
 
-  final TextEditingController controller;
+  final SmartMarkdownController controller;
   final String? chapterTitle;
   final Set<TemplateToolbarAction> actions;
   final ValueChanged<String> onChanged;
@@ -1318,79 +1319,67 @@ final class _MarkdownEditor extends StatelessWidget {
     return Material(
       color: scheme.surface,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    chapterTitle == null
-                        ? tr.editor.workspace.markdown.title
-                        : tr.editor.workspace.markdown
-                            .chapterTitle(title: chapterTitle!),
-                    style: Theme.of(context).textTheme.titleMedium,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        chapterTitle == null
+                            ? tr.editor.workspace.markdown.title
+                            : tr.editor.workspace.markdown
+                                .chapterTitle(title: chapterTitle!),
+                        style: Theme.of(context).textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Live Markdown · Select text for formatting · Type / for blocks',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
                   ),
                 ),
                 Tooltip(
                   message: tr.editor.workspace.markdown.chapterOnlyLoaded,
-                  child: Icon(
-                    Icons.bolt_rounded,
-                    size: 18,
-                    color: scheme.onSurfaceVariant,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bolt_rounded, size: 15, color: scheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Live',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              child: MarkdownCommandToolbar(
+            Expanded(
+              child: SmartMarkdownEditor(
                 controller: controller,
                 actions: actions,
                 onChanged: onChanged,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                onChanged: onChanged,
-                expands: true,
-                maxLines: null,
-                minLines: null,
-                textAlignVertical: TextAlignVertical.top,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: scheme.surfaceContainerLowest,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: scheme.outlineVariant),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: scheme.outlineVariant),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: scheme.primary),
-                  ),
-                  hintText: tr.editor.workspace.markdown.writeHint,
-                  contentPadding: const EdgeInsets.all(16),
-                ),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 14.5,
-                  height: 1.55,
-                ),
+                hintText: tr.editor.workspace.markdown.writeHint,
               ),
             ),
           ],
