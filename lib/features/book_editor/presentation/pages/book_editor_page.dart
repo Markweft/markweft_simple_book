@@ -1602,7 +1602,7 @@ final class _ChapterTitleDialog extends StatefulWidget {
 }
 
 final class _ChapterTitleDialogState extends State<_ChapterTitleDialog> {
-  late final TextEditingController _controller;
+  late final SmartMarkdownController _controller;
 
   @override
   void initState() {
