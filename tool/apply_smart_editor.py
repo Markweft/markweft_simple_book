@@ -6,8 +6,10 @@ original = text
 
 old_import = "import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';\n"
 new_import = "import 'package:markweft_simple_book/features/book_editor/presentation/widgets/smart_markdown_editor.dart';\n"
+text = text.replace(old_import, '')
 if new_import not in text:
-    text = text.replace(old_import, old_import + new_import, 1)
+    anchor = "import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_settings_dialog.dart';\n"
+    text = text.replace(anchor, anchor + new_import, 1)
 
 text = text.replace(
     '  late final TextEditingController _controller;\n',
