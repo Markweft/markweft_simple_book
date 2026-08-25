@@ -398,16 +398,16 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
               '[${tr.toolbar.placeholders.linkText}](https://example.com)',
         ),
       if (widget.actions.contains(TemplateToolbarAction.table))
-        const _SlashCommand(
-          label: 'Table',
+        _SlashCommand(
+          label: tr.toolbar.insert.table,
           keywords: ['table', 'grid'],
           icon: Icons.table_chart_outlined,
           insertion:
               '| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |',
         ),
       if (widget.actions.contains(TemplateToolbarAction.codeBlock))
-        const _SlashCommand(
-          label: 'Code block',
+        _SlashCommand(
+          label: tr.toolbar.formatting.codeBlock,
           keywords: ['code', 'block', 'snippet'],
           icon: Icons.code_rounded,
           insertion: '```\n\n```',
@@ -542,21 +542,21 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
         },
       ),
       ContextMenuButtonItem(
-        label: 'Underline',
+        label: tr.toolbar.formatting.underline,
         onPressed: () {
           ContextMenuController.removeAny();
           _wrapSelection('<u>', '</u>');
         },
       ),
       ContextMenuButtonItem(
-        label: 'Strike',
+        label: tr.toolbar.formatting.strike,
         onPressed: () {
           ContextMenuController.removeAny();
           _wrapSelection('~~', '~~');
         },
       ),
       ContextMenuButtonItem(
-        label: 'Code',
+        label: tr.toolbar.formatting.inlineCode,
         onPressed: () {
           ContextMenuController.removeAny();
           _wrapSelection('`', '`');
@@ -578,12 +578,96 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
     ];
   }
 
+  Widget _buildFloatingSelectionToolbar(BuildContext context) {
+    final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget action({
+      required String tooltip,
+      required Widget icon,
+      required VoidCallback onPressed,
+    }) {
+      return Tooltip(
+        message: tooltip,
+        child: IconButton(
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+          padding: EdgeInsets.zero,
+          onPressed: onPressed,
+          icon: icon,
+        ),
+      );
+    }
+
+    return Material(
+      elevation: 12,
+      shadowColor: Colors.black.withValues(alpha: 0.28),
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            action(
+              tooltip: tr.toolbar.formatting.bold,
+              icon: const Icon(Icons.format_bold_rounded, size: 18),
+              onPressed: () => _wrapSelection(
+                '**',
+                '**',
+                fallback: tr.toolbar.placeholders.boldText,
+              ),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.italic,
+              icon: const Icon(Icons.format_italic_rounded, size: 18),
+              onPressed: () => _wrapSelection(
+                '*',
+                '*',
+                fallback: tr.toolbar.placeholders.italicText,
+              ),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.underline,
+              icon: const Icon(Icons.format_underlined_rounded, size: 18),
+              onPressed: () => _wrapSelection('<u>', '</u>'),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.strike,
+              icon: const Icon(Icons.strikethrough_s_rounded, size: 18),
+              onPressed: () => _wrapSelection('~~', '~~'),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.inlineCode,
+              icon: const Icon(Icons.code_rounded, size: 18),
+              onPressed: () => _wrapSelection('`', '`'),
+            ),
+            if (widget.actions.contains(TemplateToolbarAction.link))
+              action(
+                tooltip: tr.toolbar.insert.link,
+                icon: const Icon(Icons.link_rounded, size: 18),
+                onPressed: () => _wrapSelection(
+                  '[',
+                  '](https://example.com)',
+                  fallback: tr.toolbar.placeholders.linkText,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return CompositedTransformTarget(
       link: _layerLink,
-      child: TextField(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: TextField(
         controller: widget.controller,
         focusNode: _focusNode,
         onChanged: widget.onChanged,
@@ -624,6 +708,27 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
           height: 1.65,
           color: scheme.onSurface,
         ),
+            ),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: widget.controller,
+            builder: (context, value, _) {
+              final selection = value.selection;
+              if (!selection.isValid || selection.isCollapsed) {
+                return const SizedBox.shrink();
+              }
+              return Positioned(
+                top: 10,
+                left: 0,
+                right: 0,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: _buildFloatingSelectionToolbar(context),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
