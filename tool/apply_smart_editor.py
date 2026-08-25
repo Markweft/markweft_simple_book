@@ -135,5 +135,159 @@ smart = smart.replace("        const _SlashCommand(\n          label: 'Code bloc
 smart = smart.replace("        label: 'Underline',", "        label: tr.toolbar.formatting.underline,")
 smart = smart.replace("        label: 'Strike',", "        label: tr.toolbar.formatting.strike,")
 smart = smart.replace("        label: 'Code',", "        label: tr.toolbar.formatting.inlineCode,")
+
+build_marker = '''  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: TextField(
+'''
+if '_buildFloatingSelectionToolbar' not in smart and build_marker in smart:
+    helper = r'''  Widget _buildFloatingSelectionToolbar(BuildContext context) {
+    final tr = Translations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget action({
+      required String tooltip,
+      required Widget icon,
+      required VoidCallback onPressed,
+    }) {
+      return Tooltip(
+        message: tooltip,
+        child: IconButton(
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+          padding: EdgeInsets.zero,
+          onPressed: onPressed,
+          icon: icon,
+        ),
+      );
+    }
+
+    return Material(
+      elevation: 12,
+      shadowColor: Colors.black.withValues(alpha: 0.28),
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            action(
+              tooltip: tr.toolbar.formatting.bold,
+              icon: const Icon(Icons.format_bold_rounded, size: 18),
+              onPressed: () => _wrapSelection(
+                '**',
+                '**',
+                fallback: tr.toolbar.placeholders.boldText,
+              ),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.italic,
+              icon: const Icon(Icons.format_italic_rounded, size: 18),
+              onPressed: () => _wrapSelection(
+                '*',
+                '*',
+                fallback: tr.toolbar.placeholders.italicText,
+              ),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.underline,
+              icon: const Icon(Icons.format_underlined_rounded, size: 18),
+              onPressed: () => _wrapSelection('<u>', '</u>'),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.strike,
+              icon: const Icon(Icons.strikethrough_s_rounded, size: 18),
+              onPressed: () => _wrapSelection('~~', '~~'),
+            ),
+            action(
+              tooltip: tr.toolbar.formatting.inlineCode,
+              icon: const Icon(Icons.code_rounded, size: 18),
+              onPressed: () => _wrapSelection('`', '`'),
+            ),
+            if (widget.actions.contains(TemplateToolbarAction.link))
+              action(
+                tooltip: tr.toolbar.insert.link,
+                icon: const Icon(Icons.link_rounded, size: 18),
+                onPressed: () => _wrapSelection(
+                  '[',
+                  '](https://example.com)',
+                  fallback: tr.toolbar.placeholders.linkText,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+'''
+    smart = smart.replace(build_marker, helper + build_marker, 1)
+
+old_return = '''    return CompositedTransformTarget(
+      link: _layerLink,
+      child: TextField(
+'''
+new_return = '''    return CompositedTransformTarget(
+      link: _layerLink,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: TextField(
+'''
+smart = smart.replace(old_return, new_return, 1)
+
+old_tail = '''        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 15.5,
+          height: 1.65,
+          color: scheme.onSurface,
+        ),
+      ),
+    );
+  }
+}
+'''
+new_tail = '''        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 15.5,
+          height: 1.65,
+          color: scheme.onSurface,
+        ),
+            ),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: widget.controller,
+            builder: (context, value, _) {
+              final selection = value.selection;
+              if (!selection.isValid || selection.isCollapsed) {
+                return const SizedBox.shrink();
+              }
+              return Positioned(
+                top: 10,
+                left: 0,
+                right: 0,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: _buildFloatingSelectionToolbar(context),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+'''
+if 'ValueListenableBuilder<TextEditingValue>' not in smart:
+    if old_tail not in smart:
+        raise SystemExit('Smart editor build tail marker not found')
+    smart = smart.replace(old_tail, new_tail, 1)
+
 if smart != smart_original:
     smart_path.write_text(smart)
