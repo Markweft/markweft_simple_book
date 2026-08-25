@@ -1,4 +1,5 @@
 name: Apply smart Markdown editor
+# trigger smart editor wiring
 
 on:
   push:
