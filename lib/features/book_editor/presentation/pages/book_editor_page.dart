@@ -10,7 +10,6 @@ import 'package:markweft_simple_book/features/book_editor/application/book_outpu
 import 'package:markweft_simple_book/features/book_editor/application/template_registry.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_preview_panel.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/book_settings_dialog.dart';
-import 'package:markweft_simple_book/features/book_editor/presentation/widgets/markdown_command_toolbar.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/smart_markdown_editor.dart';
 import 'package:markweft_simple_book/features/book_history/data/services/book_history_service.dart';
 import 'package:markweft_simple_book/features/book_history/presentation/pages/book_history_page.dart';
