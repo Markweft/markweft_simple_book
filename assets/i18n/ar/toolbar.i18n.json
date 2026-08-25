@@ -7,6 +7,9 @@
   "formatting": {
     "bold": "عريض",
     "italic": "مائل",
+    "underline": "تحته خط",
+    "strike": "يتوسطه خط",
+    "inlineCode": "كود",
     "quote": "اقتباس",
     "divider": "فاصل",
     "codeBlock": "كتلة برمجية"
@@ -32,5 +35,9 @@
     "quoteText": "اقتباس",
     "linkText": "نص الرابط",
     "imageDescription": "وصف الصورة"
+  },
+  "smart": {
+    "live": "مباشر",
+    "help": "Markdown مباشر · حدّد النص للتنسيق · اكتب / لإضافة العناصر"
   }
 }
