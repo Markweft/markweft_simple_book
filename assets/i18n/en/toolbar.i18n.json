@@ -7,6 +7,9 @@
   "formatting": {
     "bold": "Bold",
     "italic": "Italic",
+    "underline": "Underline",
+    "strike": "Strikethrough",
+    "inlineCode": "Code",
     "quote": "Quote",
     "divider": "Divider",
     "codeBlock": "Code block"
@@ -32,5 +35,9 @@
     "quoteText": "Quote",
     "linkText": "Link text",
     "imageDescription": "Image description"
+  },
+  "smart": {
+    "live": "Live",
+    "help": "Live Markdown · select text for formatting · type / for blocks"
   }
 }
