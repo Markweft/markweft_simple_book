@@ -572,12 +572,11 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
         ),
       ]),
       const SizedBox(height: 12),
-      TextFormField(
-        key: ValueKey('description-${metadata.description.hashCode}'),
-        initialValue: metadata.description,
+      _textField(
+        label: 'Description',
+        value: metadata.description,
         minLines: 3,
         maxLines: 6,
-        decoration: const InputDecoration(labelText: 'Description'),
         onChanged: (value) =>
             _setMetadata(metadata.copyWith(description: value)),
       ),
@@ -1063,11 +1062,15 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
     required String label,
     required String value,
     required ValueChanged<String> onChanged,
+    int? minLines,
+    int? maxLines = 1,
   }) {
-    return TextFormField(
-      key: ValueKey('$label-${value.hashCode}'),
-      initialValue: value,
-      decoration: InputDecoration(labelText: label),
+    return _BookSettingsTextField(
+      key: ValueKey<String>('book-settings-text-$label'),
+      label: label,
+      value: value,
+      minLines: minLines,
+      maxLines: maxLines,
       onChanged: onChanged,
     );
   }
@@ -1079,11 +1082,11 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
     double min = 0,
     double? max,
   }) {
-    return TextFormField(
-      key: ValueKey('$label-$value'),
-      initialValue: _formatNumber(value),
+    return _BookSettingsTextField(
+      key: ValueKey<String>('book-settings-number-$label'),
+      label: label,
+      value: _formatNumber(value),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: label),
       onChanged: (raw) {
         final parsed = double.tryParse(raw);
         if (parsed == null || parsed < min || (max != null && parsed > max)) {
@@ -1245,5 +1248,90 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
 
   String _formatNumber(double value) {
     return value == value.roundToDouble() ? '${value.toInt()}' : '$value';
+  }
+}
+
+final class _BookSettingsTextField extends StatefulWidget {
+  const _BookSettingsTextField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.keyboardType,
+    this.minLines,
+    this.maxLines = 1,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final ValueChanged<String> onChanged;
+  final TextInputType? keyboardType;
+  final int? minLines;
+  final int? maxLines;
+
+  @override
+  State<_BookSettingsTextField> createState() =>
+      _BookSettingsTextFieldState();
+}
+
+final class _BookSettingsTextFieldState extends State<_BookSettingsTextField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+    _focusNode = FocusNode()..addListener(_handleFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _BookSettingsTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _syncExternalValue();
+    }
+  }
+
+  void _handleFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _syncExternalValue(force: true);
+    }
+  }
+
+  void _syncExternalValue({bool force = false}) {
+    if (!force && _focusNode.hasFocus) {
+      return;
+    }
+    if (_controller.text == widget.value) {
+      return;
+    }
+
+    _controller.value = TextEditingValue(
+      text: widget.value,
+      selection: TextSelection.collapsed(offset: widget.value.length),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: _controller,
+      focusNode: _focusNode,
+      keyboardType: widget.keyboardType,
+      minLines: widget.minLines,
+      maxLines: widget.maxLines,
+      decoration: InputDecoration(labelText: widget.label),
+      onChanged: widget.onChanged,
+    );
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_handleFocusChange)
+      ..dispose();
+    _controller.dispose();
+    super.dispose();
   }
 }
