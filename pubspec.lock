@@ -362,7 +362,7 @@ packages:
     description:
       path: "."
       ref: "feature/book-settings-chapters"
-      resolved-ref: "22692ac415cc5c795ec47680fdc6f4966a140735"
+      resolved-ref: f2bbbbcb5119e68fb0b56c2f5b1934c68be28cc2
       url: "https://github.com/Markweft/markweft_template_simple.git"
     source: git
     version: "0.4.0"

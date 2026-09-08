@@ -200,6 +200,7 @@ class Translations$toolbar$ar extends Translations$toolbar$en {
 	@override late final Translations$toolbar$lists$ar lists = Translations$toolbar$lists$ar._(_root);
 	@override late final Translations$toolbar$insert$ar insert = Translations$toolbar$insert$ar._(_root);
 	@override late final Translations$toolbar$placeholders$ar placeholders = Translations$toolbar$placeholders$ar._(_root);
+	@override late final Translations$toolbar$smart$ar smart = Translations$toolbar$smart$ar._(_root);
 }
 
 // Path: welcome
@@ -571,6 +572,9 @@ class Translations$toolbar$formatting$ar extends Translations$toolbar$formatting
 	// Translations
 	@override String get bold => 'عريض';
 	@override String get italic => 'مائل';
+	@override String get underline => 'تحته خط';
+	@override String get strike => 'يتوسطه خط';
+	@override String get inlineCode => 'كود';
 	@override String get quote => 'اقتباس';
 	@override String get divider => 'فاصل';
 	@override String get codeBlock => 'كتلة برمجية';
@@ -617,6 +621,17 @@ class Translations$toolbar$placeholders$ar extends Translations$toolbar$placehol
 	@override String get quoteText => 'اقتباس';
 	@override String get linkText => 'نص الرابط';
 	@override String get imageDescription => 'وصف الصورة';
+}
+
+// Path: toolbar.smart
+class Translations$toolbar$smart$ar extends Translations$toolbar$smart$en {
+	Translations$toolbar$smart$ar._(TranslationsAr root) : this._root = root, super.internal(root);
+
+	final TranslationsAr _root; // ignore: unused_field
+
+	// Translations
+	@override String get live => 'مباشر';
+	@override String get help => 'Markdown مباشر · حدّد النص للتنسيق · اكتب / لإضافة العناصر';
 }
 
 // Path: welcome.topBar

@@ -305,7 +305,7 @@ final class MdwBookProjectRepository implements BookProjectRepository {
       rootPath: project.workspace.path,
     );
 
-    final encoded = ZipEncoder().encode(archive);
+    final encoded = ZipEncoder().encodeBytes(archive);
     await _atomicFileService.write(project.file, encoded);
   }
 

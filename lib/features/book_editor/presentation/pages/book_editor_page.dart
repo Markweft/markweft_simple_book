@@ -1606,7 +1606,7 @@ final class _ChapterTitleDialogState extends State<_ChapterTitleDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
+    _controller = SmartMarkdownController(text: widget.initialValue);
   }
 
   @override
