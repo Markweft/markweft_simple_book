@@ -68,7 +68,9 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
         ? widget.initialFormat
         : supported.first;
     _scope = widget.initialScope;
-    if (_scope == BookPreviewScope.book) unawaited(_loadWholeBook());
+    if (_scope == BookPreviewScope.book) {
+      _scheduleWholeBookLoad();
+    }
   }
 
   @override
@@ -83,8 +85,17 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
         oldWidget.template.metadata.id != widget.template.metadata.id) {
       _wholeBookMarkdown = null;
       _wholeBookError = null;
-      if (_scope == BookPreviewScope.book) unawaited(_loadWholeBook());
+      if (_scope == BookPreviewScope.book) {
+        _scheduleWholeBookLoad();
+      }
     }
+  }
+
+  void _scheduleWholeBookLoad() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _scope != BookPreviewScope.book) return;
+      unawaited(_loadWholeBook());
+    });
   }
 
   Future<void> _setScope(BookPreviewScope scope) async {
