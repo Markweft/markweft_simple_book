@@ -19,6 +19,13 @@ void main() {
       facingPages: true,
       languageCode: 'ar',
       direction: BookDirection.rtl,
+      typography: BookTypographySettings(
+        fontFamily: 'Noto Naskh Arabic',
+        fontSize: 13,
+        lineHeight: 1.7,
+        embeddedPdfFontDataUri: 'data:font/ttf;base64,AAECAw==',
+        embeddedPdfFontFileName: 'NotoNaskhArabic-Regular.ttf',
+      ),
       defaultParagraphStyleId: 'lead',
       paragraphStyles: <ParagraphStyleDefinition>[
         ParagraphStyleDefinition(
@@ -37,6 +44,7 @@ void main() {
         ),
       ],
       runningContent: RunningContentSettings(
+        styleId: 'book-chapter',
         headerEnabled: true,
         footerEnabled: true,
         headerLeftPage: '{bookTitle}',
@@ -70,9 +78,14 @@ void main() {
     expect(decoded.bleed.right, 3);
     expect(decoded.direction, BookDirection.rtl);
     expect(decoded.languageCode, 'ar');
+    expect(decoded.typography.fontFamily, 'Noto Naskh Arabic');
+    expect(decoded.typography.fontSize, 13);
+    expect(decoded.typography.embeddedPdfFontFileName, 'NotoNaskhArabic-Regular.ttf');
+    expect(decoded.typography.embeddedPdfFontDataUri, 'data:font/ttf;base64,AAECAw==');
     expect(decoded.defaultParagraphStyleId, 'lead');
     expect(decoded.paragraphStyles, hasLength(2));
     expect(decoded.paragraphStyleFor('lead').firstLineIndent, 18);
+    expect(decoded.runningContent.styleId, 'book-chapter');
     expect(decoded.runningContent.headerEnabled, isTrue);
     expect(decoded.runningContent.headerRightPage, '{chapterTitle}');
     expect(decoded.cover.mode, BookCoverMode.textOnly);
@@ -102,6 +115,8 @@ void main() {
     expect(decoded.effectivePageMargins.inside, 24);
     expect(decoded.bleed.horizontal, 0);
     expect(decoded.facingPages, isFalse);
+    expect(decoded.typography.hasEmbeddedPdfFont, isFalse);
+    expect(decoded.runningContent.styleId, 'custom');
     expect(decoded.cover.mode, BookCoverMode.none);
     expect(decoded.metadata.title, isEmpty);
     expect(decoded.paragraphStyles, isNotEmpty);
