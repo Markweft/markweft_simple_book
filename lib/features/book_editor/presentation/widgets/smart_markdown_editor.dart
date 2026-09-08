@@ -40,7 +40,7 @@ final class SmartMarkdownController extends TextEditingController {
     final headingMatch = RegExp(r'^(#{1,6})(\s+)(.*)$').firstMatch(line);
     if (headingMatch != null) {
       final level = headingMatch.group(1)!.length;
-      final sizes = <int, double>{
+      const sizes = <int, double>{
         1: 30,
         2: 25,
         3: 21,
@@ -67,7 +67,6 @@ final class SmartMarkdownController extends TextEditingController {
               fontSize: sizes[level],
               height: 1.25,
               fontWeight: level <= 2 ? FontWeight.w700 : FontWeight.w600,
-              letterSpacing: level <= 2 ? -0.35 : null,
             ),
           ),
         );
@@ -120,19 +119,6 @@ final class SmartMarkdownController extends TextEditingController {
       return;
     }
 
-    if (RegExp(r'^\s*(---|___|\*\*\*)\s*$').hasMatch(line)) {
-      children.add(
-        TextSpan(
-          text: line,
-          style: baseStyle.copyWith(
-            color: scheme.outline,
-            letterSpacing: 2,
-          ),
-        ),
-      );
-      return;
-    }
-
     if (line.trimLeft().startsWith('<!--')) {
       children.add(
         TextSpan(
@@ -171,51 +157,42 @@ final class SmartMarkdownController extends TextEditingController {
           TextSpan(text: value.substring(cursor, match.start), style: baseStyle),
         );
       }
-
       final token = match.group(0)!;
       if (token.startsWith('**')) {
-        _appendDelimited(
+        _delimited(
           children,
           token,
-          delimiterLength: 2,
-          contentStyle: baseStyle.copyWith(fontWeight: FontWeight.w700),
-          markerStyle: baseStyle.copyWith(
+          2,
+          baseStyle.copyWith(fontWeight: FontWeight.w700),
+          baseStyle.copyWith(
             color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
           ),
         );
       } else if (token.startsWith('~~')) {
-        _appendDelimited(
+        _delimited(
           children,
           token,
-          delimiterLength: 2,
-          contentStyle: baseStyle.copyWith(
-            decoration: TextDecoration.lineThrough,
-          ),
-          markerStyle: baseStyle.copyWith(
+          2,
+          baseStyle.copyWith(decoration: TextDecoration.lineThrough),
+          baseStyle.copyWith(
             color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
           ),
         );
       } else if (token.startsWith('`')) {
-        _appendDelimited(
+        _delimited(
           children,
           token,
-          delimiterLength: 1,
-          contentStyle: baseStyle.copyWith(
-            fontFamily: 'monospace',
-            color: scheme.tertiary,
-            backgroundColor: scheme.tertiaryContainer.withValues(alpha: 0.22),
-          ),
-          markerStyle: baseStyle.copyWith(
-            color: scheme.tertiary.withValues(alpha: 0.45),
-          ),
+          1,
+          baseStyle.copyWith(fontFamily: 'monospace', color: scheme.tertiary),
+          baseStyle.copyWith(color: scheme.tertiary.withValues(alpha: 0.45)),
         );
       } else if (token.startsWith('*') || token.startsWith('_')) {
-        _appendDelimited(
+        _delimited(
           children,
           token,
-          delimiterLength: 1,
-          contentStyle: baseStyle.copyWith(fontStyle: FontStyle.italic),
-          markerStyle: baseStyle.copyWith(
+          1,
+          baseStyle.copyWith(fontStyle: FontStyle.italic),
+          baseStyle.copyWith(
             color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
           ),
         );
@@ -226,12 +203,10 @@ final class SmartMarkdownController extends TextEditingController {
             style: baseStyle.copyWith(
               color: scheme.primary,
               decoration: TextDecoration.underline,
-              decorationColor: scheme.primary.withValues(alpha: 0.5),
             ),
           ),
         );
       }
-
       cursor = match.end;
     }
 
@@ -240,15 +215,15 @@ final class SmartMarkdownController extends TextEditingController {
     }
   }
 
-  void _appendDelimited(
+  void _delimited(
     List<InlineSpan> children,
-    String token, {
-    required int delimiterLength,
-    required TextStyle contentStyle,
-    required TextStyle markerStyle,
-  }) {
-    final marker = token.substring(0, delimiterLength);
-    final content = token.substring(delimiterLength, token.length - delimiterLength);
+    String token,
+    int length,
+    TextStyle contentStyle,
+    TextStyle markerStyle,
+  ) {
+    final marker = token.substring(0, length);
+    final content = token.substring(length, token.length - length);
     children
       ..add(TextSpan(text: marker, style: markerStyle))
       ..add(TextSpan(text: content, style: contentStyle))
@@ -304,14 +279,29 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
     super.dispose();
   }
 
+  TextDirection _inferDirection(String text) {
+    for (final rune in text.runes) {
+      if ((rune >= 0x0590 && rune <= 0x08FF) ||
+          (rune >= 0xFB1D && rune <= 0xFDFF) ||
+          (rune >= 0xFE70 && rune <= 0xFEFF)) {
+        return TextDirection.rtl;
+      }
+      if ((rune >= 0x0041 && rune <= 0x005A) ||
+          (rune >= 0x0061 && rune <= 0x007A)) {
+        return TextDirection.ltr;
+      }
+    }
+    return Directionality.of(context);
+  }
+
   void _handleControllerChanged() {
+    if (mounted) setState(() {});
     final value = widget.controller.value;
     final selection = value.selection;
     if (!selection.isValid || !selection.isCollapsed) {
       _removeSlashOverlay();
       return;
     }
-
     final caret = selection.extentOffset.clamp(0, value.text.length);
     final lineStart = caret == 0 ? 0 : value.text.lastIndexOf('\n', caret - 1) + 1;
     final beforeCaret = value.text.substring(lineStart, caret);
@@ -320,10 +310,95 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
       _removeSlashOverlay();
       return;
     }
-
     _slashQuery = (match.group(2) ?? '').toLowerCase();
     _slashStart = lineStart + match.start + (match.group(1)?.length ?? 0);
     _showSlashOverlay();
+  }
+
+  List<_SlashCommand> _commands(BuildContext context) {
+    final tr = Translations.of(context);
+    final all = <_SlashCommand>[
+      if (widget.actions.contains(TemplateToolbarAction.heading1))
+        _SlashCommand(
+          label: tr.toolbar.headings.h1,
+          keywords: const ['h1', 'heading', 'title'],
+          icon: Icons.title_rounded,
+          insertion: '# ${tr.toolbar.headings.placeholder}',
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.heading2))
+        _SlashCommand(
+          label: tr.toolbar.headings.h2,
+          keywords: const ['h2', 'heading'],
+          icon: Icons.text_fields_rounded,
+          insertion: '## ${tr.toolbar.headings.placeholder}',
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.bulletList))
+        const _SlashCommand(
+          label: 'Bullet list',
+          keywords: ['list', 'bullet'],
+          icon: Icons.format_list_bulleted_rounded,
+          insertion: '- ',
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.numberedList))
+        const _SlashCommand(
+          label: 'Numbered list',
+          keywords: ['list', 'number'],
+          icon: Icons.format_list_numbered_rounded,
+          insertion: '1. ',
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.quote))
+        const _SlashCommand(
+          label: 'Quote',
+          keywords: ['quote'],
+          icon: Icons.format_quote_rounded,
+          insertion: '> ',
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.image))
+        const _SlashCommand(
+          label: 'Image',
+          keywords: ['image', 'picture', 'asset'],
+          icon: Icons.image_outlined,
+          insertion: '![Image](data:image/png;base64,)',
+          cursorBack: 1,
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.table))
+        const _SlashCommand(
+          label: 'Table',
+          keywords: ['table', 'grid'],
+          icon: Icons.table_chart_outlined,
+          insertion: '| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |',
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.codeBlock))
+        const _SlashCommand(
+          label: 'Code block',
+          keywords: ['code'],
+          icon: Icons.code_rounded,
+          insertion: '```\n\n```',
+          cursorBack: 4,
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.newPage))
+        const _SlashCommand(
+          label: 'Page break',
+          keywords: ['page', 'break'],
+          icon: Icons.note_add_outlined,
+          insertion: '<!-- page -->',
+        ),
+      if (widget.actions.contains(TemplateToolbarAction.paragraphStyle))
+        const _SlashCommand(
+          label: 'Paragraph style',
+          keywords: ['style', 'paragraph'],
+          icon: Icons.format_paragraph_rounded,
+          insertion: '[style:body] ',
+        ),
+    ];
+
+    if (_slashQuery.isEmpty) return all;
+    return all
+        .where(
+          (command) => command.label.toLowerCase().contains(_slashQuery) ||
+              command.keywords.any((keyword) => keyword.contains(_slashQuery)),
+        )
+        .toList(growable: false);
   }
 
   void _showSlashOverlay() {
@@ -343,106 +418,9 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
     _slashQuery = '';
   }
 
-  List<_SlashCommand> _commands(BuildContext context) {
-    final tr = Translations.of(context);
-    final all = <_SlashCommand>[
-      if (widget.actions.contains(TemplateToolbarAction.heading1))
-        _SlashCommand(
-          label: tr.toolbar.headings.h1,
-          keywords: const ['h1', 'heading', 'title'],
-          icon: Icons.title_rounded,
-          insertion: '# ${tr.toolbar.headings.placeholder}',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.heading2))
-        _SlashCommand(
-          label: tr.toolbar.headings.h2,
-          keywords: const ['h2', 'heading', 'subtitle'],
-          icon: Icons.text_fields_rounded,
-          insertion: '## ${tr.toolbar.headings.placeholder}',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.bulletList))
-        _SlashCommand(
-          label: tr.toolbar.lists.bullet,
-          keywords: const ['list', 'bullet', 'ul'],
-          icon: Icons.format_list_bulleted_rounded,
-          insertion: '- ',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.numberedList))
-        _SlashCommand(
-          label: tr.toolbar.lists.numbered,
-          keywords: const ['list', 'number', 'ol'],
-          icon: Icons.format_list_numbered_rounded,
-          insertion: '1. ',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.quote))
-        _SlashCommand(
-          label: tr.toolbar.formatting.quote,
-          keywords: const ['quote', 'blockquote'],
-          icon: Icons.format_quote_rounded,
-          insertion: '> ',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.image))
-        _SlashCommand(
-          label: tr.toolbar.insert.image,
-          keywords: const ['image', 'picture', 'photo'],
-          icon: Icons.image_outlined,
-          insertion:
-              '![${tr.toolbar.placeholders.imageDescription}](assets/images/image.png)',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.link))
-        _SlashCommand(
-          label: tr.toolbar.insert.link,
-          keywords: const ['link', 'url'],
-          icon: Icons.link_rounded,
-          insertion:
-              '[${tr.toolbar.placeholders.linkText}](https://example.com)',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.table))
-        _SlashCommand(
-          label: tr.toolbar.insert.table,
-          keywords: ['table', 'grid'],
-          icon: Icons.table_chart_outlined,
-          insertion:
-              '| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.codeBlock))
-        _SlashCommand(
-          label: tr.toolbar.formatting.codeBlock,
-          keywords: ['code', 'block', 'snippet'],
-          icon: Icons.code_rounded,
-          insertion: '```\n\n```',
-          cursorBack: 4,
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.divider))
-        _SlashCommand(
-          label: tr.toolbar.formatting.divider,
-          keywords: const ['divider', 'rule', 'separator'],
-          icon: Icons.horizontal_rule_rounded,
-          insertion: '---',
-        ),
-      if (widget.actions.contains(TemplateToolbarAction.newPage))
-        _SlashCommand(
-          label: tr.toolbar.insert.newPage,
-          keywords: const ['page', 'break', 'new page'],
-          icon: Icons.note_add_outlined,
-          insertion: '<!-- page -->',
-        ),
-    ];
-
-    if (_slashQuery.isEmpty) return all;
-    return all
-        .where(
-          (command) => command.label.toLowerCase().contains(_slashQuery) ||
-              command.keywords.any((keyword) => keyword.contains(_slashQuery)),
-        )
-        .toList(growable: false);
-  }
-
   Widget _buildSlashOverlay(BuildContext context) {
     final commands = _commands(context);
     if (commands.isEmpty) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
-
     return Positioned.fill(
       child: CompositedTransformFollower(
         link: _layerLink,
@@ -454,13 +432,11 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
           alignment: Alignment.topLeft,
           child: Material(
             elevation: 12,
-            shadowColor: Colors.black.withValues(alpha: 0.28),
-            color: scheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             clipBehavior: Clip.antiAlias,
             child: ConstrainedBox(
               constraints: const BoxConstraints(
-                minWidth: 280,
+                minWidth: 260,
                 maxWidth: 340,
                 maxHeight: 360,
               ),
@@ -502,233 +478,53 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
     _focusNode.requestFocus();
   }
 
-  void _wrapSelection(String before, String after, {String fallback = 'text'}) {
-    final value = widget.controller.value;
-    final selection = value.selection;
-    if (!selection.isValid) return;
-    final start = selection.start.clamp(0, value.text.length);
-    final end = selection.end.clamp(0, value.text.length);
-    final selected = start == end ? fallback : value.text.substring(start, end);
-    final replacement = '$before$selected$after';
-    final nextText = value.text.replaceRange(start, end, replacement);
-    widget.controller.value = TextEditingValue(
-      text: nextText,
-      selection: TextSelection(
-        baseOffset: start + before.length,
-        extentOffset: start + before.length + selected.length,
-      ),
-    );
-    widget.onChanged(nextText);
-  }
-
-  List<ContextMenuButtonItem> _contextMenuItems(
-    BuildContext context,
-    EditableTextState editableTextState,
-  ) {
-    final tr = Translations.of(context);
-    return <ContextMenuButtonItem>[
-      ContextMenuButtonItem(
-        label: tr.toolbar.formatting.bold,
-        onPressed: () {
-          ContextMenuController.removeAny();
-          _wrapSelection('**', '**', fallback: tr.toolbar.placeholders.boldText);
-        },
-      ),
-      ContextMenuButtonItem(
-        label: tr.toolbar.formatting.italic,
-        onPressed: () {
-          ContextMenuController.removeAny();
-          _wrapSelection('*', '*', fallback: tr.toolbar.placeholders.italicText);
-        },
-      ),
-      ContextMenuButtonItem(
-        label: tr.toolbar.formatting.underline,
-        onPressed: () {
-          ContextMenuController.removeAny();
-          _wrapSelection('<u>', '</u>');
-        },
-      ),
-      ContextMenuButtonItem(
-        label: tr.toolbar.formatting.strike,
-        onPressed: () {
-          ContextMenuController.removeAny();
-          _wrapSelection('~~', '~~');
-        },
-      ),
-      ContextMenuButtonItem(
-        label: tr.toolbar.formatting.inlineCode,
-        onPressed: () {
-          ContextMenuController.removeAny();
-          _wrapSelection('`', '`');
-        },
-      ),
-      if (widget.actions.contains(TemplateToolbarAction.link))
-        ContextMenuButtonItem(
-          label: tr.toolbar.insert.link,
-          onPressed: () {
-            ContextMenuController.removeAny();
-            _wrapSelection(
-              '[',
-              '](https://example.com)',
-              fallback: tr.toolbar.placeholders.linkText,
-            );
-          },
-        ),
-      ...editableTextState.contextMenuButtonItems,
-    ];
-  }
-
-  Widget _buildFloatingSelectionToolbar(BuildContext context) {
-    final tr = Translations.of(context);
-    final scheme = Theme.of(context).colorScheme;
-
-    Widget action({
-      required String tooltip,
-      required Widget icon,
-      required VoidCallback onPressed,
-    }) {
-      return Tooltip(
-        message: tooltip,
-        child: IconButton(
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-          padding: EdgeInsets.zero,
-          onPressed: onPressed,
-          icon: icon,
-        ),
-      );
-    }
-
-    return Material(
-      elevation: 12,
-      shadowColor: Colors.black.withValues(alpha: 0.28),
-      color: scheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(10),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            action(
-              tooltip: tr.toolbar.formatting.bold,
-              icon: const Icon(Icons.format_bold_rounded, size: 18),
-              onPressed: () => _wrapSelection(
-                '**',
-                '**',
-                fallback: tr.toolbar.placeholders.boldText,
-              ),
-            ),
-            action(
-              tooltip: tr.toolbar.formatting.italic,
-              icon: const Icon(Icons.format_italic_rounded, size: 18),
-              onPressed: () => _wrapSelection(
-                '*',
-                '*',
-                fallback: tr.toolbar.placeholders.italicText,
-              ),
-            ),
-            action(
-              tooltip: tr.toolbar.formatting.underline,
-              icon: const Icon(Icons.format_underlined_rounded, size: 18),
-              onPressed: () => _wrapSelection('<u>', '</u>'),
-            ),
-            action(
-              tooltip: tr.toolbar.formatting.strike,
-              icon: const Icon(Icons.strikethrough_s_rounded, size: 18),
-              onPressed: () => _wrapSelection('~~', '~~'),
-            ),
-            action(
-              tooltip: tr.toolbar.formatting.inlineCode,
-              icon: const Icon(Icons.code_rounded, size: 18),
-              onPressed: () => _wrapSelection('`', '`'),
-            ),
-            if (widget.actions.contains(TemplateToolbarAction.link))
-              action(
-                tooltip: tr.toolbar.insert.link,
-                icon: const Icon(Icons.link_rounded, size: 18),
-                onPressed: () => _wrapSelection(
-                  '[',
-                  '](https://example.com)',
-                  fallback: tr.toolbar.placeholders.linkText,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: TextField(
-        controller: widget.controller,
-        focusNode: _focusNode,
-        onChanged: widget.onChanged,
-        onTapOutside: (_) => _removeSlashOverlay(),
-        expands: true,
-        maxLines: null,
-        minLines: null,
-        textAlignVertical: TextAlignVertical.top,
-        keyboardType: TextInputType.multiline,
-        textInputAction: TextInputAction.newline,
-        contextMenuBuilder: (context, editableTextState) {
-          return AdaptiveTextSelectionToolbar.buttonItems(
-            anchors: editableTextState.contextMenuAnchors,
-            buttonItems: _contextMenuItems(context, editableTextState),
-          );
-        },
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: scheme.surfaceContainerLowest,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: scheme.outlineVariant),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: scheme.outlineVariant),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: scheme.primary, width: 1.2),
-          ),
-          hintText: widget.hintText,
-          contentPadding: const EdgeInsets.fromLTRB(22, 20, 22, 48),
-        ),
-        style: TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 15.5,
-          height: 1.65,
-          color: scheme.onSurface,
-        ),
+    final direction = _inferDirection(widget.controller.text);
+
+    return Directionality(
+      textDirection: direction,
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: TextField(
+          controller: widget.controller,
+          focusNode: _focusNode,
+          onChanged: widget.onChanged,
+          onTapOutside: (_) => _removeSlashOverlay(),
+          expands: true,
+          maxLines: null,
+          minLines: null,
+          textDirection: direction,
+          textAlign: TextAlign.start,
+          textAlignVertical: TextAlignVertical.top,
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.newline,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: scheme.surfaceContainerLowest,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: scheme.outlineVariant),
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: scheme.outlineVariant),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: scheme.primary, width: 1.2),
+            ),
+            hintText: widget.hintText,
+            contentPadding: const EdgeInsets.fromLTRB(22, 20, 22, 48),
           ),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: widget.controller,
-            builder: (context, value, _) {
-              final selection = value.selection;
-              if (!selection.isValid || selection.isCollapsed) {
-                return const SizedBox.shrink();
-              }
-              return Positioned(
-                top: 10,
-                left: 0,
-                right: 0,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: _buildFloatingSelectionToolbar(context),
-                ),
-              );
-            },
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 15.5,
+            height: 1.65,
+            color: scheme.onSurface,
           ),
-        ],
+        ),
       ),
     );
   }
