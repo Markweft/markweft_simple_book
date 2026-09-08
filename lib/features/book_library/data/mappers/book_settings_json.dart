@@ -40,6 +40,8 @@ final class BookSettingsJson {
         'fontWeight': settings.typography.fontWeight,
         'lineHeight': settings.typography.lineHeight,
         'alignment': settings.typography.alignment.name,
+        'embeddedPdfFontDataUri': settings.typography.embeddedPdfFontDataUri,
+        'embeddedPdfFontFileName': settings.typography.embeddedPdfFontFileName,
       },
       'defaultParagraphStyleId': settings.defaultParagraphStyleId,
       'paragraphStyles': [
@@ -125,6 +127,10 @@ final class BookSettingsJson {
               typographyJson['alignment'],
               BookTextAlignment.justify,
             ),
+            embeddedPdfFontDataUri:
+                _nullableString(typographyJson['embeddedPdfFontDataUri']),
+            embeddedPdfFontFileName:
+                _nullableString(typographyJson['embeddedPdfFontFileName']),
           );
 
     final marginsJson = _map(decoded['pageMargins']);
