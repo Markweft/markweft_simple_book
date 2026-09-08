@@ -4,12 +4,25 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   flutter:
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Configure private Markweft package access
+        env:
+          MARKWEFT_REPO_TOKEN: ${{ secrets.MARKWEFT_REPO_TOKEN }}
+        run: |
+          if [ -z "$MARKWEFT_REPO_TOKEN" ]; then
+            echo "::error::Add the MARKWEFT_REPO_TOKEN repository secret with read access to Markweft/markweft_template_simple."
+            exit 1
+          fi
+          git config --global url."https://x-access-token:${MARKWEFT_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
