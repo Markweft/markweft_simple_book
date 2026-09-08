@@ -361,7 +361,7 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "feature/publishing-layout-system"
+      ref: "develop"
       resolved-ref: "03a230129be21f532353b1663c8c732e02d12dd8"
       url: "https://github.com/Markweft/markweft_template_simple.git"
     source: git
