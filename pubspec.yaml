@@ -28,7 +28,7 @@ dependencies:
   markweft_template_simple:
     git:
       url: https://github.com/Markweft/markweft_template_simple.git
-      ref: feature/publishing-layout-system
+      ref: develop
 
 dev_dependencies:
   flutter_test:
