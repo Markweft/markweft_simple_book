@@ -10,6 +10,7 @@ import 'package:markweft_simple_book/core/settings/app_settings_store.dart';
 import 'package:markweft_simple_book/core/ui/dialogs/book_title_dialog.dart';
 import 'package:markweft_simple_book/core/ui/theme/markweft_theme.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/pages/book_editor_page.dart';
+import 'package:markweft_simple_book/features/book_library/application/obsidian_book_import_service.dart';
 import 'package:markweft_simple_book/features/book_library/data/repositories/mdw_book_project_repository.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/macos_security_scoped_bookmark_service.dart';
 import 'package:markweft_simple_book/features/book_library/data/services/mdw_version_converter.dart';
@@ -30,6 +31,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     label: 'Markweft book',
     extensions: <String>['mdw'],
   );
+  static const ObsidianBookImportService _obsidianImportService =
+      ObsidianBookImportService();
 
   final BookProjectRepository _projectRepository = MdwBookProjectRepository();
   final RecentProjectsStore _recentProjectsStore = RecentProjectsStore();
@@ -73,14 +76,12 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       LocaleSettings.useDeviceLocale();
       return;
     }
-
     await LocaleSettings.setLocaleRaw(languageCode);
   }
 
   Future<void> _openAppSettings() async {
     final context = _navigatorKey.currentContext;
     if (context == null) return;
-
     final settings = await Navigator.of(context).push<AppSettings>(
       MaterialPageRoute(
         builder: (_) => AppSettingsPage(settings: _appSettings),
@@ -93,7 +94,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   Future<void> _loadRecentProjects() async {
     final recentProjects = await _recentProjectsStore.load();
     final versions = <String, int?>{};
-
     for (final projectPath in recentProjects) {
       var version = await _recentProjectsStore.versionFor(projectPath);
       version ??= await _inspectRecentVersion(projectPath);
@@ -102,7 +102,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         await _recentProjectsStore.cacheVersion(projectPath, version);
       }
     }
-
     if (!mounted) return;
     setState(() {
       _recentProjects = recentProjects;
@@ -115,16 +114,11 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       if (!Platform.isMacOS) {
         return await _versionConverter.inspectVersion(projectPath);
       }
-
-      // Try direct access first. This works while macOS still grants access in
-      // the current session and lets us backfill version metadata for legacy
-      // recent entries.
       try {
         return await _versionConverter.inspectVersion(projectPath);
       } on Object {
         // Fall through to the persistent security-scoped bookmark.
       }
-
       final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
       if (bookmark == null) return null;
       final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
@@ -150,13 +144,60 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   }
 
   Future<void> _importMarkdown() async {
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+    final mode = await showDialog<_BookImportMode>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import book'),
+        content: const Text(
+          'Import one Markdown file, or convert a complete Obsidian vault folder into chapters and embedded assets.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.of(context).pop(_BookImportMode.markdown),
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('Markdown file'),
+          ),
+          FilledButton.icon(
+            onPressed: () =>
+                Navigator.of(context).pop(_BookImportMode.obsidian),
+            icon: const Icon(Icons.account_tree_outlined),
+            label: const Text('Obsidian folder'),
+          ),
+        ],
+      ),
+    );
+    if (mode == null) return;
+
     final title = await _askForBookTitle(
       title: t.dialogs.bookTitle.import.title,
       actionLabel: t.dialogs.bookTitle.import.action,
     );
     if (title == null) return;
+
+    if (mode == _BookImportMode.markdown) {
+      await _runProjectAction(
+        () => _projectRepository.importMarkdown(title: title),
+      );
+      return;
+    }
+
+    final directoryPath = await getDirectoryPath(
+      confirmButtonText: 'Import Obsidian vault',
+    );
+    if (directoryPath == null) return;
     await _runProjectAction(
-      () => _projectRepository.importMarkdown(title: title),
+      () => _obsidianImportService.importVault(
+        vault: Directory(directoryPath),
+        title: title,
+        repository: _projectRepository,
+      ),
     );
   }
 
@@ -191,7 +232,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     var mode = MdwConversionMode.saveCopy;
     var openAfter = true;
     final tr = Translations.of(context);
-
     return showDialog<_ConversionChoice>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -263,7 +303,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   }) async {
     final context = _navigatorKey.currentContext;
     if (context == null) return;
-
     final target = targetVersion ?? await _chooseTargetVersion(context);
     if (target == null) return;
     final choice = await _chooseConversionMode(context);
@@ -297,7 +336,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
           mode: choice.mode,
         );
       }
-
       if (result == null || !mounted) return;
 
       String? bookmark;
@@ -312,16 +350,12 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         version: result.targetVersion,
       );
       await _loadRecentProjects();
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            t.welcome.conversion.success(path: result.outputPath),
-          ),
+          content: Text(t.welcome.conversion.success(path: result.outputPath)),
         ),
       );
-
       if (choice.openAfter) {
         await _runProjectAction(
           () => _projectRepository.openProject(result!.outputPath),
@@ -345,7 +379,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       acceptedTypeGroups: const <XTypeGroup>[_projectType],
     );
     if (selected == null) return;
-
     setState(() {
       _isBusy = true;
       _errorMessage = null;
@@ -355,7 +388,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     try {
       version = await _versionConverter.inspectVersion(selected.path);
       if (!mounted) return;
-
       if (version != MdwVersionConverter.currentVersion) {
         setState(() => _isBusy = false);
         await _convertBookVersion(
@@ -397,7 +429,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         setState(() => _errorMessage = t.welcome.errors.legacyBookmark);
         return;
       }
-
       try {
         final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
         _activeSecurityScopedPath = resolvedPath;
@@ -431,7 +462,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
       _isBusy = true;
       _errorMessage = null;
     });
-
     try {
       final project = await action();
       if (project == null || !mounted) return;
@@ -451,7 +481,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
         version: version,
       );
       if (!mounted) return;
-
       setState(() {
         _activeProject = project;
         _recentProjects = recentProjects;
@@ -473,7 +502,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   Future<void> _closeProject() async {
     final project = _activeProject;
     if (project == null) return;
-
     await _projectRepository.closeProject(project);
 
     final securityScopedPath = _activeSecurityScopedPath;
@@ -481,7 +509,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     if (securityScopedPath != null) {
       await _bookmarkService.stopAccessing(securityScopedPath);
     }
-
     if (!mounted) return;
     setState(() {
       _activeProject = null;
@@ -506,7 +533,6 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   }) async {
     final dialogContext = _navigatorKey.currentContext;
     if (dialogContext == null) return null;
-
     return showDialog<String>(
       context: dialogContext,
       builder: (context) => BookTitleDialog(
@@ -558,6 +584,8 @@ final class _MarkweftAppState extends State<MarkweftApp> {
     );
   }
 }
+
+enum _BookImportMode { markdown, obsidian }
 
 final class _ConversionChoice {
   const _ConversionChoice({
