@@ -62,6 +62,7 @@ final class BookSettingsJson {
           },
       ],
       'runningContent': <String, Object?>{
+        'styleId': settings.runningContent.styleId,
         'headerEnabled': settings.runningContent.headerEnabled,
         'footerEnabled': settings.runningContent.footerEnabled,
         'headerLeftPage': settings.runningContent.headerLeftPage,
@@ -188,6 +189,7 @@ final class BookSettingsJson {
     final runningContent = runningJson == null
         ? const RunningContentSettings()
         : RunningContentSettings(
+            styleId: _string(runningJson['styleId'], 'custom'),
             headerEnabled: _bool(runningJson['headerEnabled'], false),
             footerEnabled: _bool(runningJson['footerEnabled'], false),
             headerLeftPage:
