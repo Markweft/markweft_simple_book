@@ -26,6 +26,13 @@ final class MdwAtomicFileService {
   }
 
   Future<File> recoverIfNeeded(File target) async {
+    // A file chosen through the macOS sandbox grants read/write access to the
+    // selected file, not to arbitrary sibling paths. The macOS write path
+    // therefore never creates `.saving` or `.backup` files beside the book.
+    if (Platform.isMacOS) {
+      return target;
+    }
+
     final saving = File('${target.path}.saving');
     final backup = File('${target.path}.backup');
 
@@ -51,7 +58,22 @@ final class MdwAtomicFileService {
   Future<void> _writeAtomic(File target, Uint8List bytes) async {
     _validateArchiveBytes(bytes);
 
-    await target.parent.create(recursive: true);
+    // macOS App Sandbox access obtained from NSSavePanel/NSOpenPanel is scoped
+    // to the exact user-selected file. Creating `${target.path}.saving` or
+    // `${target.path}.backup` beside a book on Desktop/Documents therefore
+    // fails with EPERM even though writing the selected .mdw itself is allowed.
+    //
+    // Keep the queued/validated write semantics, but write the selected file
+    // directly on macOS. Other desktop platforms retain the sibling-file
+    // atomic replace/recovery strategy below.
+    if (Platform.isMacOS) {
+      await _writeSelectedMacOsFile(target, bytes);
+      return;
+    }
+
+    if (!await target.parent.exists()) {
+      await target.parent.create(recursive: true);
+    }
 
     final saving = File('${target.path}.saving');
     final backup = File('${target.path}.backup');
@@ -83,6 +105,17 @@ final class MdwAtomicFileService {
       rethrow;
     } finally {
       await _deleteIfExists(saving);
+    }
+  }
+
+  Future<void> _writeSelectedMacOsFile(File target, Uint8List bytes) async {
+    // Do not attempt to create the parent directory here. For a security-scoped
+    // file outside the app container, the app owns permission to the selected
+    // file but not necessarily to mutate its parent directory.
+    await target.writeAsBytes(bytes, flush: true);
+
+    if (!await _isValidMdw(target)) {
+      throw const FormatException('The saved MDW archive failed validation.');
     }
   }
 
