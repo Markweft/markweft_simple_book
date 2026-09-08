@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:markweft_simple_book/core/i18n/translations.g.dart';
+import 'package:markweft_simple_book/features/book_assets/presentation/book_asset_collection_dialog.dart';
 import 'package:markweft_simple_book/features/book_editor/application/book_compilation_service.dart';
 import 'package:markweft_simple_book/features/book_editor/application/book_output_format.dart';
 import 'package:markweft_simple_book/features/book_editor/presentation/widgets/visual_book_canvas.dart';
@@ -53,12 +55,8 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
 
   List<BookOutputFormat> get _supportedFormats {
     final formats = <BookOutputFormat>[];
-    if (widget.template.metadata.supportsPdf) {
-      formats.add(BookOutputFormat.pdf);
-    }
-    if (widget.template.metadata.supportsEpub) {
-      formats.add(BookOutputFormat.epub);
-    }
+    if (widget.template.metadata.supportsPdf) formats.add(BookOutputFormat.pdf);
+    if (widget.template.metadata.supportsEpub) formats.add(BookOutputFormat.epub);
     return formats;
   }
 
@@ -70,9 +68,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
         ? widget.initialFormat
         : supported.first;
     _scope = widget.initialScope;
-    if (_scope == BookPreviewScope.book) {
-      unawaited(_loadWholeBook());
-    }
+    if (_scope == BookPreviewScope.book) unawaited(_loadWholeBook());
   }
 
   @override
@@ -82,24 +78,19 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
     if (!supported.contains(_format) && supported.isNotEmpty) {
       _format = supported.first;
     }
-
     if (oldWidget.project.file.path != widget.project.file.path ||
         oldWidget.settings != widget.settings ||
         oldWidget.template.metadata.id != widget.template.metadata.id) {
       _wholeBookMarkdown = null;
       _wholeBookError = null;
-      if (_scope == BookPreviewScope.book) {
-        unawaited(_loadWholeBook());
-      }
+      if (_scope == BookPreviewScope.book) unawaited(_loadWholeBook());
     }
   }
 
   Future<void> _setScope(BookPreviewScope scope) async {
     if (_scope == scope) return;
     setState(() => _scope = scope);
-    if (scope == BookPreviewScope.book) {
-      await _loadWholeBook();
-    }
+    if (scope == BookPreviewScope.book) await _loadWholeBook();
   }
 
   Future<void> _loadWholeBook() async {
@@ -108,7 +99,6 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
       _loadingWholeBook = true;
       _wholeBookError = null;
     });
-
     try {
       await widget.onBeforeFullBookPreview();
       final markdown = await _compilationService.buildMarkdown(
@@ -125,6 +115,24 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
     } finally {
       if (mounted) setState(() => _loadingWholeBook = false);
     }
+  }
+
+  Future<void> _openAssets() async {
+    final markdown = await showDialog<String>(
+      context: context,
+      builder: (context) => BookAssetCollectionDialog(
+        project: widget.project,
+        repository: widget.projectRepository,
+      ),
+    );
+    if (markdown == null || !mounted) return;
+    await Clipboard.setData(ClipboardData(text: markdown));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Asset Markdown copied. Paste it into the chapter editor.'),
+      ),
+    );
   }
 
   @override
@@ -147,6 +155,7 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
             onSurfaceChanged: (value) => setState(() => _surface = value),
             onFormatChanged: (value) => setState(() => _format = value),
             onScopeChanged: _setScope,
+            onAssets: _openAssets,
             onOpenCurrentChapter: _scope == BookPreviewScope.book
                 ? () => unawaited(_setScope(BookPreviewScope.chapter))
                 : null,
@@ -161,11 +170,9 @@ final class _BookPreviewPanelState extends State<BookPreviewPanel> {
 
   Widget _buildBody(String? markdown) {
     final tr = Translations.of(context);
-
     if (_scope == BookPreviewScope.book && _loadingWholeBook && markdown == null) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (_wholeBookError != null && _scope == BookPreviewScope.book) {
       return Center(
         child: Padding(
@@ -223,6 +230,7 @@ final class _PreviewToolbar extends StatelessWidget {
     required this.onSurfaceChanged,
     required this.onFormatChanged,
     required this.onScopeChanged,
+    required this.onAssets,
     required this.onOpenCurrentChapter,
     required this.onRefresh,
   });
@@ -236,13 +244,13 @@ final class _PreviewToolbar extends StatelessWidget {
   final ValueChanged<_PreviewSurfaceMode> onSurfaceChanged;
   final ValueChanged<BookOutputFormat> onFormatChanged;
   final Future<void> Function(BookPreviewScope) onScopeChanged;
+  final VoidCallback onAssets;
   final VoidCallback? onOpenCurrentChapter;
   final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Wrap(
@@ -326,6 +334,11 @@ final class _PreviewToolbar extends StatelessWidget {
               unawaited(onScopeChanged(selection.first));
             },
           ),
+          OutlinedButton.icon(
+            onPressed: onAssets,
+            icon: const Icon(Icons.photo_library_outlined, size: 18),
+            label: const Text('Assets'),
+          ),
           if (onOpenCurrentChapter != null)
             FilledButton.tonalIcon(
               onPressed: onOpenCurrentChapter,
@@ -379,7 +392,6 @@ final class _EpubPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Translations.of(context);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Center(
