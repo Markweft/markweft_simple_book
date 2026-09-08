@@ -314,6 +314,7 @@ class Translations$toolbar$en {
 	late final Translations$toolbar$lists$en lists = Translations$toolbar$lists$en.internal(_root);
 	late final Translations$toolbar$insert$en insert = Translations$toolbar$insert$en.internal(_root);
 	late final Translations$toolbar$placeholders$en placeholders = Translations$toolbar$placeholders$en.internal(_root);
+	late final Translations$toolbar$smart$en smart = Translations$toolbar$smart$en.internal(_root);
 }
 
 // Path: welcome
@@ -871,6 +872,15 @@ class Translations$toolbar$formatting$en {
 	/// en: 'Italic'
 	String get italic => 'Italic';
 
+	/// en: 'Underline'
+	String get underline => 'Underline';
+
+	/// en: 'Strikethrough'
+	String get strike => 'Strikethrough';
+
+	/// en: 'Code'
+	String get inlineCode => 'Code';
+
 	/// en: 'Quote'
 	String get quote => 'Quote';
 
@@ -954,6 +964,21 @@ class Translations$toolbar$placeholders$en {
 
 	/// en: 'Image description'
 	String get imageDescription => 'Image description';
+}
+
+// Path: toolbar.smart
+class Translations$toolbar$smart$en {
+	Translations$toolbar$smart$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Live'
+	String get live => 'Live';
+
+	/// en: 'Live Markdown · select text for formatting · type / for blocks'
+	String get help => 'Live Markdown · select text for formatting · type / for blocks';
 }
 
 // Path: welcome.topBar

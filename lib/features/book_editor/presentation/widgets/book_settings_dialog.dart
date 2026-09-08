@@ -110,7 +110,7 @@ final class _BookSettingsPageState extends State<BookSettingsPage> {
               if (_supports(TemplateBookSetting.paragraphStyles))
                 _section(
                   title: 'Paragraph styles',
-                  icon: Icons.format_paragraph_rounded,
+                  icon: Icons.format_paint_rounded,
                   children: _paragraphStyleFields(),
                 ),
               if (_supports(TemplateBookSetting.tableOfContents))

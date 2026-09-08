@@ -387,7 +387,7 @@ final class _SmartMarkdownEditorState extends State<SmartMarkdownEditor> {
         const _SlashCommand(
           label: 'Paragraph style',
           keywords: ['style', 'paragraph'],
-          icon: Icons.format_paragraph_rounded,
+          icon: Icons.format_paint_rounded,
           insertion: '[style:body] ',
         ),
     ];

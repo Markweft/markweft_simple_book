@@ -415,42 +415,72 @@ final class _MarkweftAppState extends State<MarkweftApp> {
   Future<void> _openRecentProject(String projectPath) async {
     final version = _recentProjectVersions[projectPath] ??
         await _recentProjectsStore.versionFor(projectPath);
-    if (version != null && version != MdwVersionConverter.currentVersion) {
+
+    if (version != null &&
+        version != MdwVersionConverter.currentVersion) {
       await _convertBookVersion(
         sourcePath: projectPath,
         targetVersion: MdwVersionConverter.currentVersion,
       );
+
       return;
     }
 
-    if (Platform.isMacOS) {
-      final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
-      if (bookmark == null) {
-        setState(() => _errorMessage = t.welcome.errors.legacyBookmark);
-        return;
-      }
-      try {
-        final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
-        _activeSecurityScopedPath = resolvedPath;
-        await _runProjectAction(
-          () => _projectRepository.openProject(resolvedPath),
-          knownVersion: version,
-          recentPath: projectPath,
-        );
-        return;
-      } on Object catch (error) {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = t.welcome.errors.bookmarkRestore(error: '$error');
-        });
-        return;
-      }
+    if (!Platform.isMacOS) {
+      await _runProjectAction(
+            () => _projectRepository.openProject(projectPath),
+        knownVersion: version,
+      );
+
+      return;
     }
 
-    await _runProjectAction(
-      () => _projectRepository.openProject(projectPath),
-      knownVersion: version,
-    );
+    final bookmark = await _recentProjectsStore.bookmarkFor(projectPath);
+
+    // Old Recent Book entry without a persistent macOS bookmark.
+    //
+    // The path may still be accessible during this application session.
+    // Try opening it first. _runProjectAction() will create and persist
+    // the security-scoped bookmark automatically when possible.
+    if (bookmark == null) {
+      await _runProjectAction(
+            () => _projectRepository.openProject(projectPath),
+        knownVersion: version,
+        recentPath: projectPath,
+      );
+
+      if (!mounted || _activeProject != null) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = t.welcome.errors.legacyBookmark;
+      });
+
+      return;
+    }
+
+    try {
+      final resolvedPath = await _bookmarkService.resolveBookmark(bookmark);
+
+      _activeSecurityScopedPath = resolvedPath;
+
+      await _runProjectAction(
+            () => _projectRepository.openProject(resolvedPath),
+        knownVersion: version,
+        recentPath: projectPath,
+      );
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = t.welcome.errors.bookmarkRestore(
+          error: '$error',
+        );
+      });
+    }
   }
 
   Future<void> _runProjectAction(

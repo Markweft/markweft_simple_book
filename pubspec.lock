@@ -361,11 +361,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "feature/book-settings-chapters"
-      resolved-ref: "22692ac415cc5c795ec47680fdc6f4966a140735"
+      ref: "feature/publishing-layout-system"
+      resolved-ref: "03a230129be21f532353b1663c8c732e02d12dd8"
       url: "https://github.com/Markweft/markweft_template_simple.git"
     source: git
-    version: "0.4.0"
+    version: "0.5.0"
   matcher:
     dependency: transitive
     description:
