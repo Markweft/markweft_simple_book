@@ -1,0 +1,142 @@
+{
+  "workspace": {
+    "modes": {
+      "edit": "تحرير",
+      "canvas": "لوحة الصفحات",
+      "preview": "معاينة"
+    },
+    "markdown": {
+      "title": "Markdown",
+      "chapterTitle": "Markdown · {title}",
+      "chapterOnlyLoaded": "يتم تحميل هذا الفصل فقط داخل المحرر.",
+      "writeHint": "اكتب هذا الفصل بصيغة Markdown..."
+    },
+    "canvasTitle": "لوحة الصفحات المرئية",
+    "canvasPage": "الصفحة {current} من {total}",
+    "canvasPages": "الصفحات",
+    "canvasPagePrevious": "الصفحة السابقة",
+    "canvasPageNext": "الصفحة التالية",
+    "canvasZoomIn": "تكبير",
+    "canvasZoomOut": "تصغير",
+    "canvasResetZoom": "إعادة الضبط إلى 100%",
+    "canvasFitWidth": "ملاءمة العرض",
+    "canvasFitPage": "ملاءمة الصفحة",
+    "canvasEmpty": "لا توجد صفحات للعرض"
+  },
+  "sidebar": {
+    "title": "الكتاب",
+    "close": "إغلاق الكتاب",
+    "appSettings": "إعدادات التطبيق",
+    "settings": {
+      "title": "إعدادات الكتاب",
+      "subtitle": "الصفحة واللغة والطباعة"
+    },
+    "history": {
+      "title": "سجل الإصدارات",
+      "subtitle": "الاستعادة ونقاط الحفظ والرجوع"
+    }
+  },
+  "chapterManager": {
+    "title": "الفصول",
+    "add": "إضافة فصل",
+    "addChild": "إضافة فصل فرعي",
+    "rename": "إعادة تسمية",
+    "renameTitle": "إعادة تسمية الفصل",
+    "delete": "حذف الفصل",
+    "deleteQuestion": "حذف الفصل؟",
+    "deleteDescription": "هل تريد حذف «{title}» وملف Markdown الخاص به؟ سيتم إنشاء نقطة حفظ في السجل أولاً.",
+    "deleteTreeDescription": "هل تريد حذف «{title}» وجميع الفصول الفرعية التابعة له؟ سيتم إنشاء نقطة حفظ في السجل أولاً.",
+    "atLeastOne": "يجب أن يحتوي الكتاب على فصل واحد على الأقل.",
+    "moveUp": "تحريك للأعلى",
+    "moveDown": "تحريك للأسفل",
+    "index": "الفصل {current}/{total}",
+    "number": "الفصل {number}",
+    "defaultFirst": "الفصل الأول",
+    "loading": "جارٍ تحميل الفصل"
+  },
+  "previewPanel": {
+    "format": {
+      "pdf": "PDF",
+      "epub": "EPUB"
+    },
+    "scope": {
+      "chapter": "الفصل",
+      "fullBook": "الكتاب كاملاً"
+    },
+    "openCurrentChapter": "فتح الفصل الحالي: {title}",
+    "refreshFullBook": "تحديث معاينة الكتاب كاملاً",
+    "loadFullBookFailed": "تعذر تحميل معاينة الكتاب كاملاً.",
+    "epubReflowable": "EPUB · معاينة مرنة",
+    "largeChapter": {
+      "title": "تم إيقاف المعاينة الحية لهذا الفصل الكبير",
+      "characters": "{count} حرفاً",
+      "description": "يبقى التحرير والحفظ التلقائي فعالين؛ تم إيقاف تحليل المعاينة للحفاظ على استجابة الواجهة.",
+      "renderOnce": "إنشاء المعاينة مرة واحدة"
+    }
+  },
+  "export": {
+    "menu": "تصدير الكتاب",
+    "pdf": "تصدير PDF",
+    "epub": "تصدير EPUB",
+    "success": "تم تصدير {format} إلى {path}",
+    "failure": "تعذر تصدير {format}: {error}"
+  },
+  "save": {
+    "now": "حفظ الآن",
+    "automaticRecovery": "نقطة استعادة تلقائية",
+    "beforeDeleting": "قبل حذف {title}",
+    "beforeChangingSettings": "قبل تغيير إعدادات الكتاب",
+    "errors": {
+      "loadBook": "تعذر تحميل هذا الكتاب: {error}",
+      "saveChapter": "تعذر حفظ هذا الفصل: {error}",
+      "flushProject": "تم حفظ الفصل محلياً، لكن تحديث ملف .mdw فشل: {error}",
+      "openChapter": "تعذر فتح الفصل: {error}",
+      "saveSettings": "تعذر حفظ إعدادات الكتاب: {error}"
+    }
+  },
+  "chapterOne": "@:editor.chapterManager.defaultFirst",
+  "loadBookFailed": "@:editor.save.errors.loadBook",
+  "automaticRecoveryCheckpoint": "@:editor.save.automaticRecovery",
+  "saveChapterFailed": "@:editor.save.errors.saveChapter",
+  "mdwFlushFailed": "@:editor.save.errors.flushProject",
+  "openChapterFailed": "@:editor.save.errors.openChapter",
+  "addChapter": "@:editor.chapterManager.add",
+  "renameChapter": "@:editor.chapterManager.renameTitle",
+  "atLeastOneChapter": "@:editor.chapterManager.atLeastOne",
+  "deleteChapterQuestion": "@:editor.chapterManager.deleteQuestion",
+  "deleteChapterDescription": "@:editor.chapterManager.deleteDescription",
+  "beforeDeleting": "@:editor.save.beforeDeleting",
+  "beforeChangingSettings": "@:editor.save.beforeChangingSettings",
+  "saveSettingsFailed": "@:editor.save.errors.saveSettings",
+  "pdf": "@:editor.previewPanel.format.pdf",
+  "epub": "@:editor.previewPanel.format.epub",
+  "exported": "@:editor.export.success",
+  "exportFailed": "@:editor.export.failure",
+  "closeBook": "@:editor.sidebar.close",
+  "loadingChapter": "@:editor.chapterManager.loading",
+  "chapterIndex": "@:editor.chapterManager.index",
+  "edit": "@:editor.workspace.modes.edit",
+  "preview": "@:editor.workspace.modes.preview",
+  "versionHistory": "@:editor.sidebar.history.title",
+  "bookSettings": "@:editor.sidebar.settings.title",
+  "exportBook": "@:editor.export.menu",
+  "exportPdf": "@:editor.export.pdf",
+  "exportEpub": "@:editor.export.epub",
+  "saveNow": "@:editor.save.now",
+  "book": "@:editor.sidebar.title",
+  "bookSettingsSubtitle": "@:editor.sidebar.settings.subtitle",
+  "versionHistorySubtitle": "@:editor.sidebar.history.subtitle",
+  "chapters": "@:editor.chapterManager.title",
+  "chapterNumber": "@:editor.chapterManager.number",
+  "rename": "@:editor.chapterManager.rename",
+  "moveUp": "@:editor.chapterManager.moveUp",
+  "moveDown": "@:editor.chapterManager.moveDown",
+  "markdown": "@:editor.workspace.markdown.title",
+  "markdownChapter": "@:editor.workspace.markdown.chapterTitle",
+  "chapterOnlyLoaded": "@:editor.workspace.markdown.chapterOnlyLoaded",
+  "writeChapterHint": "@:editor.workspace.markdown.writeHint",
+  "largePreviewPaused": "@:editor.previewPanel.largeChapter.title",
+  "characters": "@:editor.previewPanel.largeChapter.characters",
+  "previewPausedDetails": "@:editor.previewPanel.largeChapter.description",
+  "renderOnce": "@:editor.previewPanel.largeChapter.renderOnce"
+}

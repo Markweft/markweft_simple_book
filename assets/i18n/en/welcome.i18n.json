@@ -1,0 +1,66 @@
+{
+  "topBar": {
+    "localFirst": "Local-first",
+    "settingsTooltip": "App settings"
+  },
+  "hero": {
+    "badge": "Markdown publishing workspace",
+    "title": "Write once.\nPublish beautifully.",
+    "description": "Build long-form books with chapters, version history, PDF layouts and reflowable EPUB output.",
+    "actions": {
+      "newBook": "New book",
+      "openBook": "Open book"
+    }
+  },
+  "quickActions": {
+    "create": {
+      "title": "Create book",
+      "description": "Start a new structured .mdw project using the latest format."
+    },
+    "open": {
+      "title": "Open project",
+      "description": "Continue an existing Markweft book."
+    },
+    "importMarkdown": {
+      "title": "Import Markdown",
+      "description": "Convert a Markdown manuscript into a book."
+    },
+    "convertVersion": {
+      "title": "Convert version",
+      "description": "Upgrade or create a compatibility copy in another MDW format version."
+    }
+  },
+  "recent": {
+    "title": "Recent books",
+    "count": "{count} projects",
+    "empty": "Your recent books will appear here.",
+    "openTooltip": "Open book",
+    "removeTooltip": "Remove from recent books",
+    "version": "MDW v{version}",
+    "current": "Current",
+    "upgrade": "Upgrade to v{version}",
+    "unknownVersion": "Detect version on open"
+  },
+  "conversion": {
+    "dialog": {
+      "title": "Convert book version",
+      "description": "Choose the target MDW version, then decide whether to update the same file or save a separate copy.",
+      "toV1": "Convert to v1",
+      "toV3": "Convert to v3",
+      "storageTitle": "Where should the converted book be saved?",
+      "sameFile": "Update same file",
+      "sameFileDescription": "Replace the selected .mdw file after a successful conversion.",
+      "saveCopy": "Save another file",
+      "saveCopyDescription": "Keep the source book unchanged and create a separate .mdw file.",
+      "openAfter": "Open converted book",
+      "openAfterDescription": "Open the converted book immediately after conversion."
+    },
+    "success": "Converted book saved to {path}",
+    "failure": "Unable to convert the book: {error}"
+  },
+  "errors": {
+    "legacyBookmark": "This recent book was saved by an older Markweft version. Use Open book once and select it again so macOS can save persistent access.",
+    "bookmarkRestore": "Unable to restore macOS permission for this book. Open it once with Open book to refresh access. ({error})",
+    "openBook": "Unable to open the book: {error}"
+  }
+}

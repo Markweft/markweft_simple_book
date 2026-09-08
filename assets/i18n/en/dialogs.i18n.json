@@ -1,0 +1,23 @@
+{
+  "bookTitle": {
+    "create": {
+      "title": "Create new book",
+      "action": "Create"
+    },
+    "import": {
+      "title": "Import Markdown book",
+      "action": "Import"
+    },
+    "field": {
+      "label": "Book title",
+      "hint": "My new book"
+    }
+  },
+  "chapter": {
+    "fieldLabel": "Chapter title"
+  },
+  "version": {
+    "messageLabel": "Version message"
+  },
+  "chapterTitle": "@:dialogs.chapter.fieldLabel"
+}

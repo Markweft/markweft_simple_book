@@ -9,20 +9,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Localization.
-  # Keep Flutter delegates for Material/Cupertino/Widgets localization.
   flutter_localizations:
     sdk: flutter
-  # Slang uses intl for dates, numbers, plurals, and formatting.
+
   intl: ^0.20.2
-  # Optional but useful for showing localized locale names in settings.
   flutter_localized_locales: ^2.0.5
-  # Type-safe JSON localization generator/runtime.
   slang: ^4.14.0
   slang_flutter: ^4.14.0
-
-
   archive: ^4.0.7
+  crypto: ^3.0.6
   file_selector: ^1.0.3
   markdown_widget: ^2.3.2+8
   path: ^1.9.1
@@ -30,8 +25,14 @@ dependencies:
   shared_preferences: ^2.5.3
   yaml: ^3.1.3
 
+  # Keep the editor feature branch and template feature branch in sync.
+  # This avoids resolving the local template's main branch, which does not
+  # expose BookSettings/BookChapter APIs yet.
   markweft_template_simple:
-    path: ../markweft_template_simple
+    git:
+      url: https://github.com/Markweft/markweft_template_simple.git
+      ref: feature/book-settings-chapters
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

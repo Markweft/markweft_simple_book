@@ -1,0 +1,77 @@
+{
+  "page": {
+    "title": "إعدادات الكتاب"
+  },
+  "sections": {
+    "document": {
+      "title": "المستند",
+      "template": "القالب",
+      "pageSize": "حجم الصفحة",
+      "orientation": "الاتجاه",
+      "orientationValues": {
+        "portrait": "عمودي",
+        "landscape": "أفقي"
+      },
+      "pageMargin": "هامش الصفحة",
+      "contentPadding": "حشو المحتوى",
+      "columns": {
+        "title": "عدد الأعمدة الافتراضي",
+        "helper": "أعداد الأعمدة المتاحة يحددها القالب المختار."
+      },
+      "platforms": "مخرجات القالب",
+      "pdf": "PDF",
+      "epub": "EPUB"
+    },
+    "appearance": {
+      "title": "مظهر النشر",
+      "colorMode": "نمط ألوان الكتاب",
+      "light": "صفحات فاتحة",
+      "dark": "صفحات داكنة",
+      "description": "يتحكم هذا بمظهر الكتاب الناتج بشكل مستقل عن مظهر تطبيق Markweft."
+    },
+    "language": {
+      "title": "اللغة واتجاه النص",
+      "bookLanguage": "لغة الكتاب",
+      "direction": "اتجاه النص",
+      "directionValues": {
+        "ltr": "من اليسار إلى اليمين (LTR)",
+        "rtl": "من اليمين إلى اليسار (RTL)"
+      }
+    },
+    "typography": {
+      "title": "إعدادات الطباعة",
+      "fontFamily": "نوع الخط",
+      "fontFamilies": {
+        "system": "خط النظام الافتراضي",
+        "serif": "Serif",
+        "sansSerif": "Sans serif",
+        "monospace": "Monospace"
+      },
+      "fontSize": "حجم الخط",
+      "fontWeight": "سماكة الخط",
+      "lineHeight": "ارتفاع السطر",
+      "alignment": "المحاذاة",
+      "alignmentValues": {
+        "start": "البداية",
+        "left": "يسار",
+        "center": "وسط",
+        "right": "يمين",
+        "justify": "ضبط"
+      }
+    },
+    "toc": {
+      "title": "جدول المحتويات",
+      "enabled": "إضافة صفحة جدول المحتويات",
+      "pageTitle": "عنوان الصفحة",
+      "maxDepth": "أقصى عمق للفصول",
+      "startOnNewPage": "البدء في صفحة جديدة",
+      "pageNumbers": "إظهار أرقام الصفحات",
+      "pageNumbersHint": "أرقام الصفحات محفوظة لمرحلة ترقيم لاحقة؛ EPUB يملك تنقلاً أصلياً دائماً.",
+      "preview": "معاينة جدول المحتويات"
+    },
+    "templateBehavior": {
+      "title": "سلوك القالب",
+      "chapterOpeningLayout": "تستخدم صفحات افتتاح الفصل تخطيط القالب {layout} بشكل افتراضي."
+    }
+  }
+}

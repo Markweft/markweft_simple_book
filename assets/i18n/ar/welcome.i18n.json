@@ -1,0 +1,66 @@
+{
+  "topBar": {
+    "localFirst": "محلي أولاً",
+    "settingsTooltip": "إعدادات التطبيق"
+  },
+  "hero": {
+    "badge": "مساحة عمل لنشر Markdown",
+    "title": "اكتب مرة واحدة.\nوانشر باحتراف.",
+    "description": "أنشئ كتباً طويلة بفصول وسجل إصدارات وتخطيطات PDF وإخراج EPUB مرن.",
+    "actions": {
+      "newBook": "كتاب جديد",
+      "openBook": "فتح كتاب"
+    }
+  },
+  "quickActions": {
+    "create": {
+      "title": "إنشاء كتاب",
+      "description": "ابدأ مشروع .mdw جديداً باستخدام أحدث إصدار من التنسيق."
+    },
+    "open": {
+      "title": "فتح مشروع",
+      "description": "تابع تحرير كتاب Markweft موجود."
+    },
+    "importMarkdown": {
+      "title": "استيراد Markdown",
+      "description": "حوّل مخطوطة Markdown إلى كتاب."
+    },
+    "convertVersion": {
+      "title": "تحويل الإصدار",
+      "description": "رقِّ الكتاب أو أنشئ نسخة متوافقة بإصدار آخر من MDW."
+    }
+  },
+  "recent": {
+    "title": "الكتب الأخيرة",
+    "count": "{count} مشاريع",
+    "empty": "ستظهر كتبك الأخيرة هنا.",
+    "openTooltip": "فتح الكتاب",
+    "removeTooltip": "إزالة من الكتب الأخيرة",
+    "version": "MDW v{version}",
+    "current": "الحالي",
+    "upgrade": "ترقية إلى v{version}",
+    "unknownVersion": "سيتم اكتشاف الإصدار عند الفتح"
+  },
+  "conversion": {
+    "dialog": {
+      "title": "تحويل إصدار الكتاب",
+      "description": "اختر إصدار MDW الهدف، ثم حدد إن كنت تريد تحديث الملف نفسه أو حفظ نسخة مستقلة.",
+      "toV1": "تحويل إلى v1",
+      "toV3": "تحويل إلى v3",
+      "storageTitle": "أين تريد حفظ الكتاب المحول؟",
+      "sameFile": "تحديث الملف نفسه",
+      "sameFileDescription": "استبدال ملف .mdw المحدد بعد نجاح عملية التحويل.",
+      "saveCopy": "حفظ ملف آخر",
+      "saveCopyDescription": "الإبقاء على الكتاب الأصلي وإنشاء ملف .mdw مستقل.",
+      "openAfter": "فتح الكتاب المحول",
+      "openAfterDescription": "فتح الكتاب المحول مباشرة بعد انتهاء العملية."
+    },
+    "success": "تم حفظ الكتاب المحول في {path}",
+    "failure": "تعذر تحويل الكتاب: {error}"
+  },
+  "errors": {
+    "legacyBookmark": "تم حفظ هذا الكتاب بواسطة إصدار أقدم من Markweft. استخدم فتح كتاب مرة واحدة واختره مجدداً حتى يتمكن macOS من حفظ صلاحية الوصول الدائمة.",
+    "bookmarkRestore": "تعذر استعادة صلاحية macOS لهذا الكتاب. افتحه مرة واحدة باستخدام فتح كتاب لتحديث الصلاحية. ({error})",
+    "openBook": "تعذر فتح الكتاب: {error}"
+  }
+}

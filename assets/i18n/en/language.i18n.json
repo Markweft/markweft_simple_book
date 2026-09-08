@@ -1,0 +1,13 @@
+{
+  "selector": {
+    "title": "Language",
+    "description": "Choose the language used by the Markweft interface."
+  },
+  "locales": {
+    "system": "System",
+    "en": "English",
+    "ar": "Arabic",
+    "fr": "French",
+    "de": "German"
+  }
+}

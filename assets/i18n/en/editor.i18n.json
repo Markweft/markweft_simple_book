@@ -1,0 +1,142 @@
+{
+  "workspace": {
+    "modes": {
+      "edit": "Edit",
+      "canvas": "Canvas",
+      "preview": "Preview"
+    },
+    "markdown": {
+      "title": "Markdown",
+      "chapterTitle": "Markdown · {title}",
+      "chapterOnlyLoaded": "Only this chapter is loaded into the editor.",
+      "writeHint": "Write this chapter in Markdown..."
+    },
+    "canvasTitle": "Visual canvas",
+    "canvasPage": "Page {current} of {total}",
+    "canvasPages": "Pages",
+    "canvasPagePrevious": "Previous page",
+    "canvasPageNext": "Next page",
+    "canvasZoomIn": "Zoom in",
+    "canvasZoomOut": "Zoom out",
+    "canvasResetZoom": "Reset to 100%",
+    "canvasFitWidth": "Fit width",
+    "canvasFitPage": "Fit page",
+    "canvasEmpty": "No pages to display"
+  },
+  "sidebar": {
+    "title": "Book",
+    "close": "Close book",
+    "appSettings": "App settings",
+    "settings": {
+      "title": "Book settings",
+      "subtitle": "Page, language, typography"
+    },
+    "history": {
+      "title": "Version history",
+      "subtitle": "Recovery, checkpoints, restore"
+    }
+  },
+  "chapterManager": {
+    "title": "Chapters",
+    "add": "Add chapter",
+    "addChild": "Add subchapter",
+    "rename": "Rename",
+    "renameTitle": "Rename chapter",
+    "delete": "Delete chapter",
+    "deleteQuestion": "Delete chapter?",
+    "deleteDescription": "Delete “{title}” and its Markdown file? A history checkpoint will be created first.",
+    "deleteTreeDescription": "Delete “{title}” and all of its nested subchapters? A history checkpoint will be created first.",
+    "atLeastOne": "A book must contain at least one chapter.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "index": "Chapter {current}/{total}",
+    "number": "Chapter {number}",
+    "defaultFirst": "Chapter One",
+    "loading": "Loading chapter"
+  },
+  "previewPanel": {
+    "format": {
+      "pdf": "PDF",
+      "epub": "EPUB"
+    },
+    "scope": {
+      "chapter": "Chapter",
+      "fullBook": "Full book"
+    },
+    "openCurrentChapter": "Open current: {title}",
+    "refreshFullBook": "Refresh full-book preview",
+    "loadFullBookFailed": "Unable to load full-book preview.",
+    "epubReflowable": "EPUB · reflowable preview",
+    "largeChapter": {
+      "title": "Live preview paused for this large chapter",
+      "characters": "{count} characters",
+      "description": "Editing and autosave stay active; preview parsing is paused to keep the UI responsive.",
+      "renderOnce": "Render preview once"
+    }
+  },
+  "export": {
+    "menu": "Export book",
+    "pdf": "Export PDF",
+    "epub": "Export EPUB",
+    "success": "{format} exported to {path}",
+    "failure": "Unable to export {format}: {error}"
+  },
+  "save": {
+    "now": "Save now",
+    "automaticRecovery": "Automatic recovery checkpoint",
+    "beforeDeleting": "Before deleting {title}",
+    "beforeChangingSettings": "Before changing book settings",
+    "errors": {
+      "loadBook": "Unable to load this book: {error}",
+      "saveChapter": "Unable to save this chapter: {error}",
+      "flushProject": "Chapter saved locally, but .mdw update failed: {error}",
+      "openChapter": "Unable to open chapter: {error}",
+      "saveSettings": "Unable to save book settings: {error}"
+    }
+  },
+  "chapterOne": "@:editor.chapterManager.defaultFirst",
+  "loadBookFailed": "@:editor.save.errors.loadBook",
+  "automaticRecoveryCheckpoint": "@:editor.save.automaticRecovery",
+  "saveChapterFailed": "@:editor.save.errors.saveChapter",
+  "mdwFlushFailed": "@:editor.save.errors.flushProject",
+  "openChapterFailed": "@:editor.save.errors.openChapter",
+  "addChapter": "@:editor.chapterManager.add",
+  "renameChapter": "@:editor.chapterManager.renameTitle",
+  "atLeastOneChapter": "@:editor.chapterManager.atLeastOne",
+  "deleteChapterQuestion": "@:editor.chapterManager.deleteQuestion",
+  "deleteChapterDescription": "@:editor.chapterManager.deleteDescription",
+  "beforeDeleting": "@:editor.save.beforeDeleting",
+  "beforeChangingSettings": "@:editor.save.beforeChangingSettings",
+  "saveSettingsFailed": "@:editor.save.errors.saveSettings",
+  "pdf": "@:editor.previewPanel.format.pdf",
+  "epub": "@:editor.previewPanel.format.epub",
+  "exported": "@:editor.export.success",
+  "exportFailed": "@:editor.export.failure",
+  "closeBook": "@:editor.sidebar.close",
+  "loadingChapter": "@:editor.chapterManager.loading",
+  "chapterIndex": "@:editor.chapterManager.index",
+  "edit": "@:editor.workspace.modes.edit",
+  "preview": "@:editor.workspace.modes.preview",
+  "versionHistory": "@:editor.sidebar.history.title",
+  "bookSettings": "@:editor.sidebar.settings.title",
+  "exportBook": "@:editor.export.menu",
+  "exportPdf": "@:editor.export.pdf",
+  "exportEpub": "@:editor.export.epub",
+  "saveNow": "@:editor.save.now",
+  "book": "@:editor.sidebar.title",
+  "bookSettingsSubtitle": "@:editor.sidebar.settings.subtitle",
+  "versionHistorySubtitle": "@:editor.sidebar.history.subtitle",
+  "chapters": "@:editor.chapterManager.title",
+  "chapterNumber": "@:editor.chapterManager.number",
+  "rename": "@:editor.chapterManager.rename",
+  "moveUp": "@:editor.chapterManager.moveUp",
+  "moveDown": "@:editor.chapterManager.moveDown",
+  "markdown": "@:editor.workspace.markdown.title",
+  "markdownChapter": "@:editor.workspace.markdown.chapterTitle",
+  "chapterOnlyLoaded": "@:editor.workspace.markdown.chapterOnlyLoaded",
+  "writeChapterHint": "@:editor.workspace.markdown.writeHint",
+  "largePreviewPaused": "@:editor.previewPanel.largeChapter.title",
+  "characters": "@:editor.previewPanel.largeChapter.characters",
+  "previewPausedDetails": "@:editor.previewPanel.largeChapter.description",
+  "renderOnce": "@:editor.previewPanel.largeChapter.renderOnce"
+}

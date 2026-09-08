@@ -1,0 +1,23 @@
+{
+  "bookTitle": {
+    "create": {
+      "title": "إنشاء كتاب جديد",
+      "action": "إنشاء"
+    },
+    "import": {
+      "title": "استيراد كتاب Markdown",
+      "action": "استيراد"
+    },
+    "field": {
+      "label": "عنوان الكتاب",
+      "hint": "كتابي الجديد"
+    }
+  },
+  "chapter": {
+    "fieldLabel": "عنوان الفصل"
+  },
+  "version": {
+    "messageLabel": "رسالة الإصدار"
+  },
+  "chapterTitle": "@:dialogs.chapter.fieldLabel"
+}
